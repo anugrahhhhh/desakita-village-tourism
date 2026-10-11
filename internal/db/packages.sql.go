@@ -131,6 +131,39 @@ func (q *Queries) GetPackage(ctx context.Context, arg GetPackageParams) (TourPac
 	return i, err
 }
 
+const getPackageForBooking = `-- name: GetPackageForBooking :one
+SELECT p.id, p.village_id, p.price_per_person_idr, p.default_quota, p.is_active, v.status AS village_status
+FROM tour_packages p
+JOIN villages v ON v.id = p.village_id
+WHERE p.id = $1
+FOR SHARE OF p, v
+`
+
+type GetPackageForBookingRow struct {
+	ID                int64
+	VillageID         int64
+	PricePerPersonIdr int64
+	DefaultQuota      int32
+	IsActive          bool
+	VillageStatus     string
+}
+
+// Used by booking (through an adapter) inside its own transaction. FOR SHARE blocks a
+// concurrent deactivation or village status change until the booking commits.
+func (q *Queries) GetPackageForBooking(ctx context.Context, id int64) (GetPackageForBookingRow, error) {
+	row := q.db.QueryRow(ctx, getPackageForBooking, id)
+	var i GetPackageForBookingRow
+	err := row.Scan(
+		&i.ID,
+		&i.VillageID,
+		&i.PricePerPersonIdr,
+		&i.DefaultQuota,
+		&i.IsActive,
+		&i.VillageStatus,
+	)
+	return i, err
+}
+
 const insertPackageMedia = `-- name: InsertPackageMedia :one
 INSERT INTO media (package_id, path, mime, bytes, sort_order, consent_confirmed, uploaded_by)
 VALUES ($1, $2, $3, $4, (SELECT coalesce(max(sort_order), 0) + 1 FROM media WHERE package_id = $1), true, $5)

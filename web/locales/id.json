@@ -136,5 +136,7 @@
   "flash.package_activated": "Paket diaktifkan.",
   "flash.package_deactivated": "Paket dinonaktifkan dan tidak tampil untuk wisatawan.",
   "error.too_large.title": "Data terlalu besar",
-  "error.too_large.message": "File atau formulir yang dikirim melebihi batas ukuran. Untuk foto, maksimal 5 MB."
+  "error.too_large.message": "File atau formulir yang dikirim melebihi batas ukuran. Untuk foto, maksimal 5 MB.",
+  "validation.date": "Pilih tanggal yang valid.",
+  "validation.party_size": "Jumlah orang 1 sampai 1000."
 }

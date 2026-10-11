@@ -32,7 +32,7 @@ wsl.exe -d Ubuntu -- bash -lc 'cd "/mnt/c/Users/ASUS/project golang 2" && TEST_D
 - Modules live in `internal/<domain>/` (`auth`, `village`, `tourpackage`, `booking`, `admin`), each with handler → service → store. Shared plumbing goes in `internal/platform/`. sqlc output goes in `internal/db/` (generated, never edit).
 - Dependencies point one way: `platform ← auth ← village ← tourpackage`, `platform ← booking`, `village ← admin`.
   - `booking` never imports `tourpackage` or `village`. It declares small interfaces (`PackageLookup`, `VillageAccess`), and `internal/app` wires the adapters.
-- All quota logic and its concurrency tests stay in `internal/booking/`. Quota changes are conditional `UPDATE … RETURNING` inside one transaction. Status transitions are `UPDATE … WHERE status IN (…)`. See SPEC §4.
+- All quota logic and its concurrency tests stay in `internal/booking/`. Package data reaches booking through `PackageLookup`, which runs inside booking's transaction with `FOR SHARE`. The adapter is in `internal/app/adapters.go`. Booking takes an injectable clock (`booking.Config.Now`). The expiry job runs from `serve` via `App.RunBackground`, never in tests. Quota changes are conditional `UPDATE … RETURNING` inside one transaction. Status transitions are `UPDATE … WHERE status IN (…)`. See SPEC §4.
 - Every booking action checks ownership of that booking (traveler_id, or village_id ∈ the manager's villages). Unauthorized access returns 404.
 - Money is `bigint` rupiah. Times are `timestamptz` (DB sessions run in UTC). Business dates use `Asia/Jakarta`.
 - Migrations are append-only once committed. Add a new numbered pair instead of editing `000001`.

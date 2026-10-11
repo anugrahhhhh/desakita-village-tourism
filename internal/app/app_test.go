@@ -41,11 +41,11 @@ func newApp(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 		t.Fatal(err)
 	}
 	pool := dbtest.New(t)
-	h, err := app.New(app.Options{Config: cfg, Pool: pool, Logger: slog.New(slog.DiscardHandler)})
+	a, err := app.New(app.Options{Config: cfg, Pool: pool, Logger: slog.New(slog.DiscardHandler)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv := httptest.NewServer(h)
+	srv := httptest.NewServer(a.Handler)
 	t.Cleanup(srv.Close)
 	return srv, pool
 }

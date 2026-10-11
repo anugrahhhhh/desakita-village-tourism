@@ -389,3 +389,29 @@ func (s *Service) DeletePhoto(ctx context.Context, packageID, mediaID int64) err
 	}
 	return nil
 }
+
+// BookingInfo is the package data the booking module needs.
+type BookingInfo struct {
+	ID                int64
+	VillageID         int64
+	PricePerPersonIDR int64
+	DefaultQuota      int32
+	IsActive          bool
+	VillageStatus     string
+}
+
+// BookingInfo reads a package inside the caller's transaction and share-locks the package
+// and its village until that transaction ends.
+func (s *Service) BookingInfo(ctx context.Context, tx pgx.Tx, id int64) (BookingInfo, error) {
+	r, err := s.q.WithTx(tx).GetPackageForBooking(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return BookingInfo{}, ErrNotFound
+	}
+	if err != nil {
+		return BookingInfo{}, fmt.Errorf("get package for booking: %w", err)
+	}
+	return BookingInfo{
+		ID: r.ID, VillageID: r.VillageID, PricePerPersonIDR: r.PricePerPersonIdr,
+		DefaultQuota: r.DefaultQuota, IsActive: r.IsActive, VillageStatus: r.VillageStatus,
+	}, nil
+}

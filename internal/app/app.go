@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"desakita/internal/auth"
+	"desakita/internal/booking"
 	"desakita/internal/platform/config"
 	"desakita/internal/platform/csrf"
 	"desakita/internal/platform/httpx"
@@ -39,7 +40,22 @@ type Options struct {
 	SessionCleanup time.Duration
 }
 
-func New(opts Options) (http.Handler, error) {
+// App is the wired application: an HTTP handler plus background workers.
+type App struct {
+	Handler http.Handler
+	Booking *booking.Service
+	logger  *slog.Logger
+}
+
+// expiryInterval is how often pending bookings past expires_at are expired (SPEC §4).
+const expiryInterval = 5 * time.Minute
+
+// RunBackground runs background workers until ctx is cancelled.
+func (a *App) RunBackground(ctx context.Context) {
+	a.Booking.RunExpiry(ctx, expiryInterval, a.logger)
+}
+
+func New(opts Options) (*App, error) {
 	tr, err := i18n.Load(web.FS, "id")
 	if err != nil {
 		return nil, err
@@ -63,6 +79,10 @@ func New(opts Options) (http.Handler, error) {
 	packageSvc := tourpackage.NewService(opts.Pool, villageSvc, store, opts.Logger)
 	villageH := village.NewHandler(villageSvc, packageSvc, sm, rd)
 	packageH := tourpackage.NewHandler(packageSvc, sm, rd)
+	bookingSvc := booking.NewService(opts.Pool, packageLookup{packageSvc}, villageSvc, booking.Config{
+		PendingTTL: opts.Config.BookingPendingTTL,
+		Location:   opts.Config.Location,
+	})
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer)
@@ -108,5 +128,5 @@ func New(opts Options) (http.Handler, error) {
 			})
 		})
 	})
-	return r, nil
+	return &App{Handler: r, Booking: bookingSvc, logger: opts.Logger}, nil
 }

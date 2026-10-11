@@ -62,3 +62,12 @@ RETURNING id;
 
 -- name: DeletePackageMedia :one
 DELETE FROM media WHERE id = $1 AND package_id = $2 RETURNING path;
+
+-- name: GetPackageForBooking :one
+-- Used by booking (through an adapter) inside its own transaction. FOR SHARE blocks a
+-- concurrent deactivation or village status change until the booking commits.
+SELECT p.id, p.village_id, p.price_per_person_idr, p.default_quota, p.is_active, v.status AS village_status
+FROM tour_packages p
+JOIN villages v ON v.id = p.village_id
+WHERE p.id = $1
+FOR SHARE OF p, v;

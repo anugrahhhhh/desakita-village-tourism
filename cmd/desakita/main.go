@@ -96,14 +96,15 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	}
 	defer pool.Close()
 
-	handler, err := app.New(app.Options{Config: cfg, Pool: pool, Logger: logger, SessionCleanup: 30 * time.Minute})
+	a, err := app.New(app.Options{Config: cfg, Pool: pool, Logger: logger, SessionCleanup: 30 * time.Minute})
 	if err != nil {
 		return err
 	}
+	go a.RunBackground(ctx)
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           handler,
+		Handler:           a.Handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,
