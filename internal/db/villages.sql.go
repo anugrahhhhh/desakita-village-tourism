@@ -204,8 +204,8 @@ func (q *Queries) GetVillageBySlug(ctx context.Context, slug string) (GetVillage
 }
 
 const insertVillageMedia = `-- name: InsertVillageMedia :one
-INSERT INTO media (village_id, path, mime, bytes, sort_order, consent_confirmed, uploaded_by)
-VALUES ($1, $2, $3, $4, (SELECT coalesce(max(sort_order), 0) + 1 FROM media WHERE village_id = $1), true, $5)
+INSERT INTO media (village_id, path, mime, bytes, sort_order, consent_confirmed, uploaded_by, caption, width, height)
+VALUES ($1, $2, $3, $4, (SELECT coalesce(max(sort_order), 0) + 1 FROM media WHERE village_id = $1), true, $5, $6, $7, $8)
 RETURNING id
 `
 
@@ -215,6 +215,9 @@ type InsertVillageMediaParams struct {
 	Mime       string
 	Bytes      int32
 	UploadedBy *int64
+	Caption    string
+	Width      *int32
+	Height     *int32
 }
 
 func (q *Queries) InsertVillageMedia(ctx context.Context, arg InsertVillageMediaParams) (int64, error) {
@@ -224,6 +227,9 @@ func (q *Queries) InsertVillageMedia(ctx context.Context, arg InsertVillageMedia
 		arg.Mime,
 		arg.Bytes,
 		arg.UploadedBy,
+		arg.Caption,
+		arg.Width,
+		arg.Height,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -362,12 +368,15 @@ func (q *Queries) ListVillageManagers(ctx context.Context, villageID int64) ([]L
 }
 
 const listVillageMedia = `-- name: ListVillageMedia :many
-SELECT id, path FROM media WHERE village_id = $1 ORDER BY sort_order, id
+SELECT id, path, caption, width, height FROM media WHERE village_id = $1 ORDER BY sort_order, id
 `
 
 type ListVillageMediaRow struct {
-	ID   int64
-	Path string
+	ID      int64
+	Path    string
+	Caption string
+	Width   *int32
+	Height  *int32
 }
 
 func (q *Queries) ListVillageMedia(ctx context.Context, villageID *int64) ([]ListVillageMediaRow, error) {
@@ -379,7 +388,13 @@ func (q *Queries) ListVillageMedia(ctx context.Context, villageID *int64) ([]Lis
 	var items []ListVillageMediaRow
 	for rows.Next() {
 		var i ListVillageMediaRow
-		if err := rows.Scan(&i.ID, &i.Path); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Path,
+			&i.Caption,
+			&i.Width,
+			&i.Height,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

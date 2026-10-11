@@ -306,5 +306,9 @@
   "flash.village_suspended": "Desa dinonaktifkan.",
   "flash.village_reinstated": "Desa diaktifkan kembali.",
   "error.rate_limited.title": "Terlalu banyak percobaan",
-  "error.rate_limited.message": "Anda mencoba terlalu sering. Tunggu sebentar lalu coba lagi."
+  "error.rate_limited.message": "Anda mencoba terlalu sering. Tunggu sebentar lalu coba lagi.",
+  "photo.field.caption": "Keterangan foto (opsional)",
+  "photo.field.caption_hint": "Jelaskan isi foto untuk pembaca layar, misalnya \"Warga menanam padi di sawah terasering\". Jika kosong, dipakai nama desa atau paket.",
+  "photo.caption_too_long": "Keterangan foto maksimal 200 karakter.",
+  "photo.thumbnail": "Foto yang sudah diunggah"
 }

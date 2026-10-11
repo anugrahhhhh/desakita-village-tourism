@@ -23,6 +23,16 @@ type PackageCard struct {
 	PricePerPersonIDR            int64
 	DurationDays, DurationNights int16
 	CoverPath                    string
+	CoverCaption                 string
+	CoverWidth, CoverHeight      int
+}
+
+// CoverAlt is the cover photo's caption, or the package name.
+func (c PackageCard) CoverAlt() string {
+	if c.CoverCaption != "" {
+		return c.CoverCaption
+	}
+	return c.Name
 }
 
 // PackageLister supplies a village's active packages. Implemented by tourpackage and wired
@@ -220,7 +230,7 @@ func (h *Handler) uploadPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-	err = h.svc.AddPhoto(r.Context(), viewer.ID, v.ID, file, r.PostFormValue("consent") == "1")
+	err = h.svc.AddPhoto(r.Context(), viewer.ID, v.ID, file, r.PostFormValue("consent") == "1", r.PostFormValue("caption"))
 	switch {
 	case err == nil:
 		h.sm.Put(r.Context(), session.KeyFlash, "flash.photo_added")
@@ -229,6 +239,8 @@ func (h *Handler) uploadPhoto(w http.ResponseWriter, r *http.Request) {
 		h.renderPhotos(w, r, http.StatusUnprocessableEntity, "photo.consent_required")
 	case errors.Is(err, ErrPhotoLimit):
 		h.renderPhotos(w, r, http.StatusUnprocessableEntity, "photo.limit")
+	case errors.Is(err, ErrCaptionTooLong):
+		h.renderPhotos(w, r, http.StatusUnprocessableEntity, "photo.caption_too_long")
 	case upload.MessageKey(err) != "":
 		h.renderPhotos(w, r, http.StatusUnprocessableEntity, upload.MessageKey(err))
 	default:

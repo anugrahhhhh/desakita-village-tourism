@@ -54,14 +54,14 @@ ORDER BY v.name;
 SELECT 1 FROM villages WHERE id = $1 FOR UPDATE;
 
 -- name: ListVillageMedia :many
-SELECT id, path FROM media WHERE village_id = $1 ORDER BY sort_order, id;
+SELECT id, path, caption, width, height FROM media WHERE village_id = $1 ORDER BY sort_order, id;
 
 -- name: CountVillageMedia :one
 SELECT count(*) FROM media WHERE village_id = $1;
 
 -- name: InsertVillageMedia :one
-INSERT INTO media (village_id, path, mime, bytes, sort_order, consent_confirmed, uploaded_by)
-VALUES ($1, $2, $3, $4, (SELECT coalesce(max(sort_order), 0) + 1 FROM media WHERE village_id = $1), true, $5)
+INSERT INTO media (village_id, path, mime, bytes, sort_order, consent_confirmed, uploaded_by, caption, width, height)
+VALUES ($1, $2, $3, $4, (SELECT coalesce(max(sort_order), 0) + 1 FROM media WHERE village_id = $1), true, $5, $6, $7, $8)
 RETURNING id;
 
 -- name: DeleteVillageMedia :one

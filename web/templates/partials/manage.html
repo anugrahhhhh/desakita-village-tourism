@@ -83,6 +83,11 @@
         <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required class="block w-full text-base">
         <p class="mt-1 text-sm text-stone-600">{{t "photo.field.hint"}}</p>
       </div>
+      <div>
+        <label for="caption" class="field-label">{{t "photo.field.caption"}}</label>
+        <input id="caption" name="caption" maxlength="200" class="field-input">
+        <p class="mt-1 text-sm text-stone-600">{{t "photo.field.caption_hint"}}</p>
+      </div>
       <label class="flex items-start gap-3">
         <input type="checkbox" name="consent" value="1" required class="mt-1 size-5">
         <span>{{t "photo.field.consent"}}</span>
@@ -96,7 +101,8 @@
   <ul class="grid grid-cols-2 gap-4 sm:grid-cols-3">
     {{range $d.Photos}}
       <li class="card p-2">
-        <img src="/media/{{.Path}}" alt="" class="aspect-[4/3] w-full rounded-lg object-cover" loading="lazy">
+        <img src="/media/{{.Path}}" alt="{{.Alt (t "photo.thumbnail")}}" width="{{.Width}}" height="{{.Height}}" class="aspect-[4/3] w-full rounded-lg object-cover" loading="lazy">
+        {{with .Caption}}<p class="mt-1 text-sm text-stone-700">{{.}}</p>{{end}}
         <form method="post" action="{{$d.DeleteBase}}/{{.ID}}/hapus" class="mt-2">
           <input type="hidden" name="csrf_token" value="{{$csrf}}">
           <button type="submit" class="btn-link text-red-800">{{t "photo.delete"}}</button>

@@ -207,8 +207,8 @@ func (q *Queries) GetPackageSummary(ctx context.Context, id int64) (GetPackageSu
 }
 
 const insertPackageMedia = `-- name: InsertPackageMedia :one
-INSERT INTO media (package_id, path, mime, bytes, sort_order, consent_confirmed, uploaded_by)
-VALUES ($1, $2, $3, $4, (SELECT coalesce(max(sort_order), 0) + 1 FROM media WHERE package_id = $1), true, $5)
+INSERT INTO media (package_id, path, mime, bytes, sort_order, consent_confirmed, uploaded_by, caption, width, height)
+VALUES ($1, $2, $3, $4, (SELECT coalesce(max(sort_order), 0) + 1 FROM media WHERE package_id = $1), true, $5, $6, $7, $8)
 RETURNING id
 `
 
@@ -218,6 +218,9 @@ type InsertPackageMediaParams struct {
 	Mime       string
 	Bytes      int32
 	UploadedBy *int64
+	Caption    string
+	Width      *int32
+	Height     *int32
 }
 
 func (q *Queries) InsertPackageMedia(ctx context.Context, arg InsertPackageMediaParams) (int64, error) {
@@ -227,6 +230,9 @@ func (q *Queries) InsertPackageMedia(ctx context.Context, arg InsertPackageMedia
 		arg.Mime,
 		arg.Bytes,
 		arg.UploadedBy,
+		arg.Caption,
+		arg.Width,
+		arg.Height,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -235,8 +241,13 @@ func (q *Queries) InsertPackageMedia(ctx context.Context, arg InsertPackageMedia
 
 const listActivePackageCards = `-- name: ListActivePackageCards :many
 SELECT p.id, p.name, p.price_per_person_idr, p.duration_days, p.duration_nights,
-       coalesce((SELECT m.path FROM media m WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1), '')::text AS cover_path
+       coalesce(c.path, '')::text AS cover_path, coalesce(c.caption, '')::text AS cover_caption,
+       coalesce(c.width, 0)::int AS cover_width, coalesce(c.height, 0)::int AS cover_height
 FROM tour_packages p
+LEFT JOIN LATERAL (
+    SELECT m.path, m.caption, m.width, m.height FROM media m
+    WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1
+) c ON true
 WHERE p.village_id = $1 AND p.is_active
 ORDER BY p.price_per_person_idr, p.name
 `
@@ -248,6 +259,9 @@ type ListActivePackageCardsRow struct {
 	DurationDays      int16
 	DurationNights    int16
 	CoverPath         string
+	CoverCaption      string
+	CoverWidth        int32
+	CoverHeight       int32
 }
 
 func (q *Queries) ListActivePackageCards(ctx context.Context, villageID int64) ([]ListActivePackageCardsRow, error) {
@@ -266,6 +280,9 @@ func (q *Queries) ListActivePackageCards(ctx context.Context, villageID int64) (
 			&i.DurationDays,
 			&i.DurationNights,
 			&i.CoverPath,
+			&i.CoverCaption,
+			&i.CoverWidth,
+			&i.CoverHeight,
 		); err != nil {
 			return nil, err
 		}
@@ -330,12 +347,15 @@ func (q *Queries) ListPackageActivityTypes(ctx context.Context, packageID int64)
 }
 
 const listPackageMedia = `-- name: ListPackageMedia :many
-SELECT id, path FROM media WHERE package_id = $1 ORDER BY sort_order, id
+SELECT id, path, caption, width, height FROM media WHERE package_id = $1 ORDER BY sort_order, id
 `
 
 type ListPackageMediaRow struct {
-	ID   int64
-	Path string
+	ID      int64
+	Path    string
+	Caption string
+	Width   *int32
+	Height  *int32
 }
 
 func (q *Queries) ListPackageMedia(ctx context.Context, packageID *int64) ([]ListPackageMediaRow, error) {
@@ -347,7 +367,13 @@ func (q *Queries) ListPackageMedia(ctx context.Context, packageID *int64) ([]Lis
 	var items []ListPackageMediaRow
 	for rows.Next() {
 		var i ListPackageMediaRow
-		if err := rows.Scan(&i.ID, &i.Path); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Path,
+			&i.Caption,
+			&i.Width,
+			&i.Height,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -463,11 +489,16 @@ const searchPackages = `-- name: SearchPackages :many
 SELECT p.id, p.name, p.price_per_person_idr, p.duration_days, p.duration_nights,
        v.name AS village_name, v.slug AS village_slug,
        d.name AS district_name, r.name AS regency_name,
-       coalesce((SELECT m.path FROM media m WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1), '')::text AS cover_path
+       coalesce(c.path, '')::text AS cover_path, coalesce(c.caption, '')::text AS cover_caption,
+       coalesce(c.width, 0)::int AS cover_width, coalesce(c.height, 0)::int AS cover_height
 FROM tour_packages p
 JOIN villages v ON v.id = p.village_id
 JOIN regions d ON d.id = v.district_id
 JOIN regions r ON r.id = d.parent_id
+LEFT JOIN LATERAL (
+    SELECT m.path, m.caption, m.width, m.height FROM media m
+    WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1
+) c ON true
 WHERE p.is_active
   AND v.status = 'verified'
   AND ($1::bigint IS NULL OR r.id = $1::bigint)
@@ -502,6 +533,9 @@ type SearchPackagesRow struct {
 	DistrictName      string
 	RegencyName       string
 	CoverPath         string
+	CoverCaption      string
+	CoverWidth        int32
+	CoverHeight       int32
 }
 
 // Public search: only active packages of verified villages. NULL filters are ignored.
@@ -533,6 +567,9 @@ func (q *Queries) SearchPackages(ctx context.Context, arg SearchPackagesParams) 
 			&i.DistrictName,
 			&i.RegencyName,
 			&i.CoverPath,
+			&i.CoverCaption,
+			&i.CoverWidth,
+			&i.CoverHeight,
 		); err != nil {
 			return nil, err
 		}

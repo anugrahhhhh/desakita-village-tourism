@@ -66,11 +66,24 @@ func (c *client) createPackage(villageID int64, name string) int64 {
 
 func (c *client) upload(path, csrf string, file []byte, consent bool) response {
 	c.t.Helper()
+	return c.uploadForm(path, csrf, file, consent, "")
+}
+
+func (c *client) uploadWithCaption(path, csrf string, file []byte, caption string) response {
+	c.t.Helper()
+	return c.uploadForm(path, csrf, file, true, caption)
+}
+
+func (c *client) uploadForm(path, csrf string, file []byte, consent bool, caption string) response {
+	c.t.Helper()
 	var body bytes.Buffer
 	mw := multipart.NewWriter(&body)
 	mw.WriteField("csrf_token", csrf) //nolint:errcheck
 	if consent {
 		mw.WriteField("consent", "1") //nolint:errcheck
+	}
+	if caption != "" {
+		mw.WriteField("caption", caption) //nolint:errcheck
 	}
 	fw, _ := mw.CreateFormFile("photo", "foto.jpg")
 	fw.Write(file) //nolint:errcheck

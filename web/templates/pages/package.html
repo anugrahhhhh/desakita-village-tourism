@@ -11,7 +11,7 @@
   {{end}}
   {{with .Data.Photos}}
     <ul class="my-6 flex snap-x gap-3 overflow-x-auto pb-2">
-      {{range .}}<li class="w-72 shrink-0 snap-start sm:w-96"><img src="/media/{{.Path}}" alt="" class="aspect-[4/3] w-full rounded-xl object-cover" loading="lazy"></li>{{end}}
+      {{range .}}<li class="w-72 shrink-0 snap-start sm:w-96"><img src="/media/{{.Path}}" alt="{{.Alt $p.Name}}" width="{{.Width}}" height="{{.Height}}" class="aspect-[4/3] w-full rounded-xl object-cover" loading="lazy"></li>{{end}}
     </ul>
   {{end}}
   {{with $p.Description}}<p class="mt-6 whitespace-pre-line text-lg leading-relaxed text-stone-800">{{.}}</p>{{end}}

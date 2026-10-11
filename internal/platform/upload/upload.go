@@ -19,6 +19,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/disintegration/imaging"
 	_ "golang.org/x/image/webp"
@@ -186,17 +188,42 @@ func ServeHandler(store Store) http.HandlerFunc {
 	}
 }
 
+// Saved describes a stored image.
+type Saved struct {
+	Name          string
+	Bytes         int
+	Width, Height int
+}
+
 // SaveImage processes r and stores the result under a fresh name.
-func SaveImage(store Store, r io.Reader) (name string, size int, err error) {
+func SaveImage(store Store, r io.Reader) (Saved, error) {
 	p, err := Process(r)
 	if err != nil {
-		return "", 0, err
+		return Saved{}, err
 	}
-	name = NewName()
+	name := NewName()
 	if err := store.Save(name, p.Data); err != nil {
-		return "", 0, fmt.Errorf("upload: save: %w", err)
+		return Saved{}, fmt.Errorf("upload: save: %w", err)
 	}
-	return name, len(p.Data), nil
+	return Saved{Name: name, Bytes: len(p.Data), Width: p.Width, Height: p.Height}, nil
+}
+
+// MaxCaption is the longest alt text a photo may carry.
+const MaxCaption = 200
+
+// Caption trims and validates a photo caption.
+func Caption(s string) (string, bool) {
+	s = strings.TrimSpace(s)
+	return s, utf8.RuneCountInString(s) <= MaxCaption
+}
+
+// Dim returns *v as an int, or def when the dimension is unknown (photos stored before
+// dimensions were recorded).
+func Dim(v *int32, def int) int {
+	if v == nil || *v <= 0 {
+		return def
+	}
+	return int(*v)
 }
 
 // MessageKey maps an upload error to an i18n key, or "" if err is not a user error.

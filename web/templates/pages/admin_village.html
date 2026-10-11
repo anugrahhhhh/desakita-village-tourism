@@ -26,7 +26,7 @@
   {{with .Data.Photos}}
     <section class="card">
       <h2 class="mb-2 text-lg font-bold">{{t "manage.village.photos"}}</h2>
-      <ul class="grid grid-cols-3 gap-2">{{range .}}<li><img src="/media/{{.Path}}" alt="" class="aspect-square w-full rounded object-cover" loading="lazy"></li>{{end}}</ul>
+      <ul class="grid grid-cols-3 gap-2">{{range .}}<li><img src="/media/{{.Path}}" alt="{{.Alt $v.Name}}" width="{{.Width}}" height="{{.Height}}" class="aspect-square w-full rounded object-cover" loading="lazy"></li>{{end}}</ul>
     </section>
   {{end}}
 

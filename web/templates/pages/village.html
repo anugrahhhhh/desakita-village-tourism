@@ -9,7 +9,7 @@
   </header>
   {{with .Data.Photos}}
     <ul class="mb-6 flex snap-x gap-3 overflow-x-auto pb-2">
-      {{range .}}<li class="w-72 shrink-0 snap-start sm:w-96"><img src="/media/{{.Path}}" alt="" class="aspect-[4/3] w-full rounded-xl object-cover" loading="lazy"></li>{{end}}
+      {{range .}}<li class="w-72 shrink-0 snap-start sm:w-96"><img src="/media/{{.Path}}" alt="{{.Alt $v.Name}}" width="{{.Width}}" height="{{.Height}}" class="aspect-[4/3] w-full rounded-xl object-cover" loading="lazy"></li>{{end}}
     </ul>
   {{end}}
   <div class="grid gap-8 lg:grid-cols-3">
@@ -21,7 +21,7 @@
         {{range .Data.Packages}}
           <li>
             <a href="/desa/{{$v.Slug}}/paket/{{.ID}}" class="card block overflow-hidden p-0 hover:border-brand-600">
-              {{if .CoverPath}}<img src="/media/{{.CoverPath}}" alt="" class="aspect-[4/3] w-full object-cover" loading="lazy">{{end}}
+              {{if .CoverPath}}<img src="/media/{{.CoverPath}}" alt="{{.CoverAlt}}" width="{{.CoverWidth}}" height="{{.CoverHeight}}" class="aspect-[4/3] w-full object-cover" loading="lazy">{{end}}
               <div class="p-4">
                 <h3 class="font-semibold">{{.Name}}</h3>
                 <p class="text-stone-700">{{rupiah .PricePerPersonIDR}} {{t "package.per_person"}} · {{template "duration" .}}</p>

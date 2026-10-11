@@ -40,6 +40,7 @@ var (
 	ErrNotFound        = errors.New("village: not found")
 	ErrConsentRequired = errors.New("village: photo consent required")
 	ErrPhotoLimit      = errors.New("village: photo limit reached")
+	ErrCaptionTooLong  = errors.New("village: photo caption too long")
 )
 
 type Village struct {
@@ -73,8 +74,18 @@ type District struct {
 }
 
 type Photo struct {
-	ID   int64
-	Path string
+	ID            int64
+	Path          string
+	Caption       string
+	Width, Height int
+}
+
+// Alt is the image's alternative text: its caption, or fallback (the village name).
+func (p Photo) Alt(fallback string) string {
+	if p.Caption != "" {
+		return p.Caption
+	}
+	return fallback
 }
 
 type Service struct {
@@ -319,7 +330,7 @@ func (s *Service) Photos(ctx context.Context, villageID int64) ([]Photo, error) 
 	}
 	out := make([]Photo, len(rows))
 	for i, r := range rows {
-		out[i] = Photo{ID: r.ID, Path: r.Path}
+		out[i] = Photo{ID: r.ID, Path: r.Path, Caption: r.Caption, Width: upload.Dim(r.Width, 1200), Height: upload.Dim(r.Height, 900)}
 	}
 	return out, nil
 }
@@ -327,9 +338,13 @@ func (s *Service) Photos(ctx context.Context, villageID int64) ([]Photo, error) 
 // AddPhoto stores a photo for the village. consent must be true: the manager confirms the
 // people and cultural content shown agreed to publication. Upload errors are returned as is
 // (see upload.MessageKey).
-func (s *Service) AddPhoto(ctx context.Context, userID, villageID int64, r io.Reader, consent bool) error {
+func (s *Service) AddPhoto(ctx context.Context, userID, villageID int64, r io.Reader, consent bool, caption string) error {
 	if !consent {
 		return ErrConsentRequired
+	}
+	caption, ok := upload.Caption(caption)
+	if !ok {
+		return ErrCaptionTooLong
 	}
 	// Cheap pre-check before the expensive decode; re-checked under lock below.
 	if n, err := s.q.CountVillageMedia(ctx, &villageID); err != nil {
@@ -337,10 +352,11 @@ func (s *Service) AddPhoto(ctx context.Context, userID, villageID int64, r io.Re
 	} else if n >= MaxPhotos {
 		return ErrPhotoLimit
 	}
-	name, size, err := upload.SaveImage(s.store, r)
+	saved, err := upload.SaveImage(s.store, r)
 	if err != nil {
 		return err
 	}
+	name := saved.Name
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.q.WithTx(tx)
 		if err := q.LockVillage(ctx, villageID); err != nil {
@@ -353,8 +369,10 @@ func (s *Service) AddPhoto(ctx context.Context, userID, villageID int64, r io.Re
 		if n >= MaxPhotos {
 			return ErrPhotoLimit
 		}
+		w, h := int32(saved.Width), int32(saved.Height)
 		_, err = q.InsertVillageMedia(ctx, db.InsertVillageMediaParams{
-			VillageID: &villageID, Path: name, Mime: upload.OutputMIME, Bytes: int32(size), UploadedBy: &userID,
+			VillageID: &villageID, Path: name, Mime: upload.OutputMIME, Bytes: int32(saved.Bytes), UploadedBy: &userID,
+			Caption: caption, Width: &w, Height: &h,
 		})
 		return err
 	})

@@ -27,6 +27,7 @@ var (
 	ErrNotFound        = errors.New("tourpackage: not found")
 	ErrConsentRequired = errors.New("tourpackage: photo consent required")
 	ErrPhotoLimit      = errors.New("tourpackage: photo limit reached")
+	ErrCaptionTooLong  = errors.New("tourpackage: photo caption too long")
 )
 
 type Package struct {
@@ -49,8 +50,18 @@ type ActivityType struct {
 }
 
 type Photo struct {
-	ID   int64
-	Path string
+	ID            int64
+	Path          string
+	Caption       string
+	Width, Height int
+}
+
+// Alt is the image's alternative text: its caption, or fallback (the package name).
+func (p Photo) Alt(fallback string) string {
+	if p.Caption != "" {
+		return p.Caption
+	}
+	return fallback
 }
 
 type Service struct {
@@ -267,6 +278,7 @@ func (s *Service) ActivePackageCards(ctx context.Context, villageID int64) ([]vi
 		out[i] = village.PackageCard{
 			ID: r.ID, Name: r.Name, PricePerPersonIDR: r.PricePerPersonIdr,
 			DurationDays: r.DurationDays, DurationNights: r.DurationNights, CoverPath: r.CoverPath,
+			CoverCaption: r.CoverCaption, CoverWidth: coverDim(r.CoverWidth, 1200), CoverHeight: coverDim(r.CoverHeight, 900),
 		}
 	}
 	return out, nil
@@ -328,25 +340,30 @@ func (s *Service) Photos(ctx context.Context, packageID int64) ([]Photo, error) 
 	}
 	out := make([]Photo, len(rows))
 	for i, r := range rows {
-		out[i] = Photo{ID: r.ID, Path: r.Path}
+		out[i] = Photo{ID: r.ID, Path: r.Path, Caption: r.Caption, Width: upload.Dim(r.Width, 1200), Height: upload.Dim(r.Height, 900)}
 	}
 	return out, nil
 }
 
 // AddPhoto stores a photo for a package the caller has already scoped to its village.
-func (s *Service) AddPhoto(ctx context.Context, userID, packageID int64, r io.Reader, consent bool) error {
+func (s *Service) AddPhoto(ctx context.Context, userID, packageID int64, r io.Reader, consent bool, caption string) error {
 	if !consent {
 		return ErrConsentRequired
+	}
+	caption, ok := upload.Caption(caption)
+	if !ok {
+		return ErrCaptionTooLong
 	}
 	if n, err := s.q.CountPackageMedia(ctx, &packageID); err != nil {
 		return fmt.Errorf("count photos: %w", err)
 	} else if n >= MaxPhotos {
 		return ErrPhotoLimit
 	}
-	name, size, err := upload.SaveImage(s.store, r)
+	saved, err := upload.SaveImage(s.store, r)
 	if err != nil {
 		return err
 	}
+	name := saved.Name
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.q.WithTx(tx)
 		if err := q.LockPackage(ctx, packageID); err != nil {
@@ -359,8 +376,10 @@ func (s *Service) AddPhoto(ctx context.Context, userID, packageID int64, r io.Re
 		if n >= MaxPhotos {
 			return ErrPhotoLimit
 		}
+		w, h := int32(saved.Width), int32(saved.Height)
 		_, err = q.InsertPackageMedia(ctx, db.InsertPackageMediaParams{
-			PackageID: &packageID, Path: name, Mime: upload.OutputMIME, Bytes: int32(size), UploadedBy: &userID,
+			PackageID: &packageID, Path: name, Mime: upload.OutputMIME, Bytes: int32(saved.Bytes), UploadedBy: &userID,
+			Caption: caption, Width: &w, Height: &h,
 		})
 		return err
 	})
@@ -481,6 +500,23 @@ type SearchResult struct {
 	VillageName, VillageSlug     string
 	DistrictName, RegencyName    string
 	CoverPath                    string
+	CoverCaption                 string
+	CoverWidth, CoverHeight      int
+}
+
+// CoverAlt is the cover photo's caption, or the package name.
+func (r SearchResult) CoverAlt() string {
+	if r.CoverCaption != "" {
+		return r.CoverCaption
+	}
+	return r.Name
+}
+
+func coverDim(v int32, def int) int {
+	if v <= 0 {
+		return def
+	}
+	return int(v)
 }
 
 type SearchPage struct {
@@ -547,6 +583,7 @@ func (s *Service) Search(ctx context.Context, f SearchFilter) (SearchPage, error
 			ID: r.ID, Name: r.Name, PricePerPersonIDR: r.PricePerPersonIdr, DurationDays: r.DurationDays,
 			DurationNights: r.DurationNights, VillageName: r.VillageName, VillageSlug: r.VillageSlug,
 			DistrictName: r.DistrictName, RegencyName: r.RegencyName, CoverPath: r.CoverPath,
+			CoverCaption: r.CoverCaption, CoverWidth: coverDim(r.CoverWidth, 1200), CoverHeight: coverDim(r.CoverHeight, 900),
 		})
 	}
 	return out, nil

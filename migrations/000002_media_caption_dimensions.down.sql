@@ -1,0 +1,4 @@
+ALTER TABLE media
+    DROP COLUMN IF EXISTS height,
+    DROP COLUMN IF EXISTS width,
+    DROP COLUMN IF EXISTS caption;

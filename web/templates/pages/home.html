@@ -45,7 +45,7 @@
   {{range $d.Results.Results}}
     <li>
       <a href="/desa/{{.VillageSlug}}/paket/{{.ID}}" class="card block h-full overflow-hidden p-0 hover:border-brand-600">
-        {{if .CoverPath}}<img src="/media/{{.CoverPath}}" alt="" class="aspect-[4/3] w-full object-cover" loading="lazy">
+        {{if .CoverPath}}<img src="/media/{{.CoverPath}}" alt="{{.CoverAlt}}" width="{{.CoverWidth}}" height="{{.CoverHeight}}" class="aspect-[4/3] w-full object-cover" loading="lazy">
         {{else}}<div class="aspect-[4/3] w-full bg-brand-50" aria-hidden="true"></div>{{end}}
         <div class="p-4">
           <h3 class="font-semibold">{{.Name}}</h3>

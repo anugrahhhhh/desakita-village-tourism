@@ -178,13 +178,13 @@ func TestPhotos(t *testing.T) {
 	a, _ := e.svc.Create(ctx, owner, e.input("Desa A"))
 	b, _ := e.svc.Create(ctx, owner, e.input("Desa B"))
 
-	if err := e.svc.AddPhoto(ctx, owner, a, pngFile(t), false); !errors.Is(err, village.ErrConsentRequired) {
+	if err := e.svc.AddPhoto(ctx, owner, a, pngFile(t), false, ""); !errors.Is(err, village.ErrConsentRequired) {
 		t.Errorf("no consent: %v", err)
 	}
-	if err := e.svc.AddPhoto(ctx, owner, a, bytes.NewReader([]byte("not an image")), true); !errors.Is(err, upload.ErrUnsupported) {
+	if err := e.svc.AddPhoto(ctx, owner, a, bytes.NewReader([]byte("not an image")), true, ""); !errors.Is(err, upload.ErrUnsupported) {
 		t.Errorf("text file: %v", err)
 	}
-	if err := e.svc.AddPhoto(ctx, owner, a, pngFile(t), true); err != nil {
+	if err := e.svc.AddPhoto(ctx, owner, a, pngFile(t), true, ""); err != nil {
 		t.Fatal(err)
 	}
 	photos, _ := e.svc.Photos(ctx, a)
@@ -210,7 +210,7 @@ func TestPhotos(t *testing.T) {
 			t.Fatal(i, err)
 		}
 	}
-	if err := e.svc.AddPhoto(ctx, owner, a, pngFile(t), true); !errors.Is(err, village.ErrPhotoLimit) {
+	if err := e.svc.AddPhoto(ctx, owner, a, pngFile(t), true, ""); !errors.Is(err, village.ErrPhotoLimit) {
 		t.Errorf("over limit: %v", err)
 	}
 }

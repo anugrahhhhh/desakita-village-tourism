@@ -21,8 +21,13 @@ SELECT * FROM tour_packages WHERE village_id = $1 ORDER BY is_active DESC, name;
 
 -- name: ListActivePackageCards :many
 SELECT p.id, p.name, p.price_per_person_idr, p.duration_days, p.duration_nights,
-       coalesce((SELECT m.path FROM media m WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1), '')::text AS cover_path
+       coalesce(c.path, '')::text AS cover_path, coalesce(c.caption, '')::text AS cover_caption,
+       coalesce(c.width, 0)::int AS cover_width, coalesce(c.height, 0)::int AS cover_height
 FROM tour_packages p
+LEFT JOIN LATERAL (
+    SELECT m.path, m.caption, m.width, m.height FROM media m
+    WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1
+) c ON true
 WHERE p.village_id = $1 AND p.is_active
 ORDER BY p.price_per_person_idr, p.name;
 
@@ -50,14 +55,14 @@ SELECT count(*) FROM activity_types WHERE id = ANY(@ids::bigint[]);
 SELECT 1 FROM tour_packages WHERE id = $1 FOR UPDATE;
 
 -- name: ListPackageMedia :many
-SELECT id, path FROM media WHERE package_id = $1 ORDER BY sort_order, id;
+SELECT id, path, caption, width, height FROM media WHERE package_id = $1 ORDER BY sort_order, id;
 
 -- name: CountPackageMedia :one
 SELECT count(*) FROM media WHERE package_id = $1;
 
 -- name: InsertPackageMedia :one
-INSERT INTO media (package_id, path, mime, bytes, sort_order, consent_confirmed, uploaded_by)
-VALUES ($1, $2, $3, $4, (SELECT coalesce(max(sort_order), 0) + 1 FROM media WHERE package_id = $1), true, $5)
+INSERT INTO media (package_id, path, mime, bytes, sort_order, consent_confirmed, uploaded_by, caption, width, height)
+VALUES ($1, $2, $3, $4, (SELECT coalesce(max(sort_order), 0) + 1 FROM media WHERE package_id = $1), true, $5, $6, $7, $8)
 RETURNING id;
 
 -- name: DeletePackageMedia :one
@@ -94,11 +99,16 @@ ORDER BY p.is_active DESC, p.name;
 SELECT p.id, p.name, p.price_per_person_idr, p.duration_days, p.duration_nights,
        v.name AS village_name, v.slug AS village_slug,
        d.name AS district_name, r.name AS regency_name,
-       coalesce((SELECT m.path FROM media m WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1), '')::text AS cover_path
+       coalesce(c.path, '')::text AS cover_path, coalesce(c.caption, '')::text AS cover_caption,
+       coalesce(c.width, 0)::int AS cover_width, coalesce(c.height, 0)::int AS cover_height
 FROM tour_packages p
 JOIN villages v ON v.id = p.village_id
 JOIN regions d ON d.id = v.district_id
 JOIN regions r ON r.id = d.parent_id
+LEFT JOIN LATERAL (
+    SELECT m.path, m.caption, m.width, m.height FROM media m
+    WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1
+) c ON true
 WHERE p.is_active
   AND v.status = 'verified'
   AND (sqlc.narg(regency_id)::bigint IS NULL OR r.id = sqlc.narg(regency_id)::bigint)

@@ -56,6 +56,9 @@ type Medium struct {
 	ConsentConfirmed bool
 	UploadedBy       *int64
 	CreatedAt        time.Time
+	Caption          string
+	Width            *int32
+	Height           *int32
 }
 
 type PackageActivityType struct {
