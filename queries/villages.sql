@@ -27,14 +27,18 @@ SET name = $2, description = $3, district_id = $4, address = $5,
 WHERE id = $1;
 
 -- name: GetVillage :one
-SELECT v.*, d.name AS district_name, r.name AS regency_name
+SELECT v.id, v.slug, v.name, v.description, v.district_id, v.address, v.lat, v.lng, v.contact_phone, v.contact_whatsapp,
+       v.status, v.review_note, v.verified_by, v.verified_at, v.created_at, v.updated_at,
+       d.name AS district_name, r.name AS regency_name
 FROM villages v
 JOIN regions d ON d.id = v.district_id
 JOIN regions r ON r.id = d.parent_id
 WHERE v.id = $1;
 
 -- name: GetVillageBySlug :one
-SELECT v.*, d.name AS district_name, r.name AS regency_name
+SELECT v.id, v.slug, v.name, v.description, v.district_id, v.address, v.lat, v.lng, v.contact_phone, v.contact_whatsapp,
+       v.status, v.review_note, v.verified_by, v.verified_at, v.created_at, v.updated_at,
+       d.name AS district_name, r.name AS regency_name
 FROM villages v
 JOIN regions d ON d.id = v.district_id
 JOIN regions r ON r.id = d.parent_id

@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 )
 
 const addPackageActivityTypes = `-- name: AddPackageActivityTypes :exec
@@ -103,7 +104,8 @@ func (q *Queries) DeletePackageMedia(ctx context.Context, arg DeletePackageMedia
 }
 
 const getPackage = `-- name: GetPackage :one
-SELECT id, village_id, name, description, price_per_person_idr, duration_days, duration_nights, default_quota, is_active, created_at, updated_at FROM tour_packages WHERE id = $1 AND village_id = $2
+SELECT id, village_id, name, description, price_per_person_idr, duration_days, duration_nights, default_quota, is_active, created_at, updated_at
+FROM tour_packages WHERE id = $1 AND village_id = $2
 `
 
 type GetPackageParams struct {
@@ -111,10 +113,24 @@ type GetPackageParams struct {
 	VillageID int64
 }
 
+type GetPackageRow struct {
+	ID                int64
+	VillageID         int64
+	Name              string
+	Description       string
+	PricePerPersonIdr int64
+	DurationDays      int16
+	DurationNights    int16
+	DefaultQuota      int32
+	IsActive          bool
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
 // Always scoped by village so a manager can't reach another village's package by id.
-func (q *Queries) GetPackage(ctx context.Context, arg GetPackageParams) (TourPackage, error) {
+func (q *Queries) GetPackage(ctx context.Context, arg GetPackageParams) (GetPackageRow, error) {
 	row := q.db.QueryRow(ctx, getPackage, arg.ID, arg.VillageID)
-	var i TourPackage
+	var i GetPackageRow
 	err := row.Scan(
 		&i.ID,
 		&i.VillageID,
@@ -441,18 +457,33 @@ func (q *Queries) ListPackageSummariesByVillage(ctx context.Context, villageID i
 }
 
 const listPackagesByVillage = `-- name: ListPackagesByVillage :many
-SELECT id, village_id, name, description, price_per_person_idr, duration_days, duration_nights, default_quota, is_active, created_at, updated_at FROM tour_packages WHERE village_id = $1 ORDER BY is_active DESC, name
+SELECT id, village_id, name, description, price_per_person_idr, duration_days, duration_nights, default_quota, is_active, created_at, updated_at
+FROM tour_packages WHERE village_id = $1 ORDER BY is_active DESC, name
 `
 
-func (q *Queries) ListPackagesByVillage(ctx context.Context, villageID int64) ([]TourPackage, error) {
+type ListPackagesByVillageRow struct {
+	ID                int64
+	VillageID         int64
+	Name              string
+	Description       string
+	PricePerPersonIdr int64
+	DurationDays      int16
+	DurationNights    int16
+	DefaultQuota      int32
+	IsActive          bool
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+func (q *Queries) ListPackagesByVillage(ctx context.Context, villageID int64) ([]ListPackagesByVillageRow, error) {
 	rows, err := q.db.Query(ctx, listPackagesByVillage, villageID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []TourPackage
+	var items []ListPackagesByVillageRow
 	for rows.Next() {
-		var i TourPackage
+		var i ListPackagesByVillageRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.VillageID,
@@ -486,40 +517,68 @@ func (q *Queries) LockPackage(ctx context.Context, id int64) error {
 }
 
 const searchPackages = `-- name: SearchPackages :many
-SELECT p.id, p.name, p.price_per_person_idr, p.duration_days, p.duration_nights,
-       v.name AS village_name, v.slug AS village_slug,
-       d.name AS district_name, r.name AS regency_name,
-       coalesce(c.path, '')::text AS cover_path, coalesce(c.caption, '')::text AS cover_caption,
-       coalesce(c.width, 0)::int AS cover_width, coalesce(c.height, 0)::int AS cover_height
-FROM tour_packages p
-JOIN villages v ON v.id = p.village_id
-JOIN regions d ON d.id = v.district_id
-JOIN regions r ON r.id = d.parent_id
-LEFT JOIN LATERAL (
-    SELECT m.path, m.caption, m.width, m.height FROM media m
-    WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1
-) c ON true
-WHERE p.is_active
-  AND v.status = 'verified'
-  AND ($1::bigint IS NULL OR r.id = $1::bigint)
-  AND ($2::bigint IS NULL OR EXISTS (
-        SELECT 1 FROM package_activity_types pa
-        WHERE pa.package_id = p.id AND pa.activity_type_id = $2::bigint))
-  AND ($3::bigint IS NULL OR p.price_per_person_idr >= $3::bigint)
-  AND ($4::bigint IS NULL OR p.price_per_person_idr <= $4::bigint)
-  AND ($5::text IS NULL OR p.name ILIKE $5::text OR v.name ILIKE $5::text)
-ORDER BY p.price_per_person_idr, p.id
-LIMIT $7 OFFSET $6
+WITH text_matches AS (
+    SELECT p.id FROM tour_packages p
+    WHERE p.is_active
+      AND (p.search_vector @@ websearch_to_tsquery('simple', $4::text)
+           OR p.name ILIKE $5::text)
+    UNION
+    SELECT p.id FROM tour_packages p
+    WHERE p.is_active
+      AND p.village_id IN (
+          SELECT v.id FROM villages v
+          WHERE v.search_vector @@ websearch_to_tsquery('simple', $4::text)
+             OR v.name ILIKE $5::text)
+),
+results AS (
+    SELECT p.id, p.name, p.price_per_person_idr, p.duration_days, p.duration_nights, p.created_at,
+           v.name AS village_name, v.slug AS village_slug,
+           d.name AS district_name, r.name AS regency_name,
+           coalesce(c.path, '')::text AS cover_path, coalesce(c.caption, '')::text AS cover_caption,
+           coalesce(c.width, 0)::int AS cover_width, coalesce(c.height, 0)::int AS cover_height,
+           coalesce(2 * ts_rank(p.search_vector, websearch_to_tsquery('simple', $4::text))
+                    + ts_rank(v.search_vector, websearch_to_tsquery('simple', $4::text))
+                    + word_similarity($4::text, p.name), 0)::float8 AS rank,
+           count(*) OVER () AS total
+    FROM tour_packages p
+    JOIN villages v ON v.id = p.village_id
+    JOIN regions d ON d.id = v.district_id
+    JOIN regions r ON r.id = d.parent_id
+    LEFT JOIN LATERAL (
+        SELECT m.path, m.caption, m.width, m.height FROM media m
+        WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1
+    ) c ON true
+    WHERE p.is_active
+      AND v.status = 'verified'
+      AND ($4::text IS NULL OR p.id IN (SELECT id FROM text_matches))
+      AND ($6::bigint IS NULL OR r.id = $6::bigint)
+      AND ($7::bigint IS NULL OR EXISTS (
+            SELECT 1 FROM package_activity_types pa
+            WHERE pa.package_id = p.id AND pa.activity_type_id = $7::bigint))
+      AND ($8::bigint IS NULL OR p.price_per_person_idr >= $8::bigint)
+      AND ($9::bigint IS NULL OR p.price_per_person_idr <= $9::bigint)
+)
+SELECT id, name, price_per_person_idr, duration_days, duration_nights, village_name, village_slug,
+       district_name, regency_name, cover_path, cover_caption, cover_width, cover_height, rank, total
+FROM results
+ORDER BY
+    CASE WHEN $1::text = 'relevance' THEN rank END DESC,
+    CASE WHEN $1::text = 'price_desc' THEN price_per_person_idr END DESC,
+    CASE WHEN $1::text = 'newest' THEN created_at END DESC,
+    price_per_person_idr, id
+LIMIT $3 OFFSET $2
 `
 
 type SearchPackagesParams struct {
+	Sort           string
+	PageOffset     int32
+	PageSize       int32
+	Query          *string
+	Pattern        *string
 	RegencyID      *int64
 	ActivityTypeID *int64
 	MinPrice       *int64
 	MaxPrice       *int64
-	Pattern        *string
-	PageOffset     int32
-	PageSize       int32
 }
 
 type SearchPackagesRow struct {
@@ -536,18 +595,26 @@ type SearchPackagesRow struct {
 	CoverCaption      string
 	CoverWidth        int32
 	CoverHeight       int32
+	Rank              float64
+	Total             int64
 }
 
-// Public search: only active packages of verified villages. NULL filters are ignored.
+// Public search over active packages of verified villages. NULL filters are ignored.
+// Text matching: full-text (names + descriptions, GIN on search_vector) OR partial name
+// match (ILIKE, GIN trigram). Candidates come from a UNION so each branch can use its own
+// table's indexes; the query text is used directly (not via a CTE column) so the planner
+// sees a constant and can build bitmap index scans. `total` is the count before LIMIT.
 func (q *Queries) SearchPackages(ctx context.Context, arg SearchPackagesParams) ([]SearchPackagesRow, error) {
 	rows, err := q.db.Query(ctx, searchPackages,
+		arg.Sort,
+		arg.PageOffset,
+		arg.PageSize,
+		arg.Query,
+		arg.Pattern,
 		arg.RegencyID,
 		arg.ActivityTypeID,
 		arg.MinPrice,
 		arg.MaxPrice,
-		arg.Pattern,
-		arg.PageOffset,
-		arg.PageSize,
 	)
 	if err != nil {
 		return nil, err
@@ -570,6 +637,8 @@ func (q *Queries) SearchPackages(ctx context.Context, arg SearchPackagesParams) 
 			&i.CoverCaption,
 			&i.CoverWidth,
 			&i.CoverHeight,
+			&i.Rank,
+			&i.Total,
 		); err != nil {
 			return nil, err
 		}

@@ -59,6 +59,7 @@ type homeData struct {
 	Filtered bool
 	// PrevQuery / NextQuery are the query strings for pagination links.
 	PrevQuery, NextQuery string
+	SortOptions          []string
 }
 
 // home is the landing page and package search.
@@ -67,6 +68,7 @@ func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
 	f := SearchFilter{
 		Regency: q.Get("wilayah"), ActivityType: q.Get("kegiatan"),
 		MinPrice: q.Get("harga_min"), MaxPrice: q.Get("harga_maks"), Query: q.Get("q"), Page: q.Get("hal"),
+		Sort: q.Get("urut"),
 	}
 	results, err := h.svc.Search(r.Context(), f)
 	if err != nil {
@@ -84,7 +86,7 @@ func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d := homeData{
-		Filter: f, Results: results, Regencies: regencies, ActivityTypes: types,
+		Filter: f, Results: results, Regencies: regencies, ActivityTypes: types, SortOptions: SortOptions,
 		Filtered: f.Regency != "" || f.ActivityType != "" || f.MinPrice != "" || f.MaxPrice != "" || f.Query != "",
 	}
 	pageQuery := func(page int) string {
@@ -93,6 +95,9 @@ func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
 			if val != "" {
 				v.Set(k, val)
 			}
+		}
+		if f.Sort != "" {
+			v.Set("urut", results.Sort)
 		}
 		if page > 1 {
 			v.Set("hal", strconv.Itoa(page))

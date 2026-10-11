@@ -117,6 +117,7 @@ type TourPackage struct {
 	IsActive          bool
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
+	SearchVector      interface{}
 }
 
 type User struct {
@@ -147,6 +148,7 @@ type Village struct {
 	VerifiedAt      *time.Time
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	SearchVector    interface{}
 }
 
 type VillageMember struct {

@@ -259,7 +259,7 @@
   "flash.date_opened": "Tanggal dibuka kembali.",
   "nav.admin": "Admin",
   "search.query": "Cari desa atau paket",
-  "search.query_hint": "Misalnya: batik, sawah, kopi",
+  "search.query_hint": "Misalnya: batik, sawah, \"menginap di rumah warga\"",
   "search.regency": "Kabupaten/kota",
   "search.activity": "Jenis kegiatan",
   "search.all": "Semua",
@@ -406,5 +406,13 @@
   "audit.action.user_promote_admin": "Pengguna dijadikan admin",
   "report.status.open": "Terbuka",
   "report.status.resolved": "Selesai",
-  "report.status.dismissed": "Diabaikan"
+  "report.status.dismissed": "Diabaikan",
+  "search.total": "%d paket ditemukan",
+  "search.sort": "Urutkan",
+  "search.apply_sort": "Urutkan",
+  "search.sort_relevance": "Paling relevan",
+  "search.sort_price_asc": "Harga termurah",
+  "search.sort_price_desc": "Harga termahal",
+  "search.sort_newest": "Terbaru",
+  "search.syntax_hint": "Tip: pakai \"tanda kutip\" untuk frasa, atau -kata untuk mengecualikan."
 }

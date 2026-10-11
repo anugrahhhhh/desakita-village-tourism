@@ -707,3 +707,52 @@ Kriteria berikut belum terpenuhi atau belum terverifikasi, dan dicatat di sini s
 - **`go test -race`:** *belum* dijalankan karena WSL belum memiliki `gcc`.
 - **Build Docker** dan `docker compose up`: *belum* dicoba.
 - **Tampilan di HP** dan HTMX di bawah CSP: baru dicek secara manual oleh pemilik proyek, tanpa tes otomatis.
+
+## 11. Pencarian dan filter (tahap 3)
+
+### Filter
+
+Semua filter bisa digabung:
+
+| Filter | Parameter | Keterangan |
+|---|---|---|
+| Kabupaten/kota | `wilayah` | |
+| Jenis kegiatan | `kegiatan` | |
+| Harga minimum dan maksimum | `harga_min`, `harga_maks` | format rupiah bebas |
+| Kata kunci | `q` | maksimal 100 karakter |
+
+Nilai yang tidak valid diabaikan. Setiap halaman berisi 24 hasil, dan jumlah total hasil selalu ditampilkan.
+
+### Kata kunci
+
+- **Full-text PostgreSQL** pada nama paket (bobot A), deskripsi paket (B), serta nama (A) dan deskripsi desa (C).
+  - Konfigurasi yang dipakai adalah `simple`: huruf kecil tanpa stemming, karena PostgreSQL tidak menyediakan kamus Bahasa Indonesia.
+  - Sintaks `websearch_to_tsquery` didukung: semua kata harus cocok, `"frasa"`, `or`, dan `-kecualikan`.
+- **Sebagian kata pada nama** paket atau desa dicocokkan dengan `pg_trgm` (`ILIKE`), misalnya "atik" cocok dengan "Membatik". Wildcard `%` dan `_` dari pengguna di-escape.
+- Hasil adalah gabungan keduanya (salah satu cocok sudah cukup).
+
+### Urutan (`urut`)
+
+| Nilai | Urutan |
+|---|---|
+| `relevan` | default jika ada kata kunci |
+| `termurah` | default jika tanpa kata kunci |
+| `termahal` | |
+| `terbaru` | |
+
+- **Skor relevansi:** `2 × ts_rank(paket) + ts_rank(desa) + word_similarity(kata kunci, nama paket)`. Cocok di nama paket mengalahkan cocok di deskripsi.
+- **Nilai tak dikenal:** `relevan` tanpa kata kunci, atau nilai yang tidak dikenal, kembali ke urutan default.
+
+### Indeks (`migrations/000004`)
+
+- **Kolom pencarian:** `search_vector` (tsvector yang di-generate otomatis) di `tour_packages` dan `villages`, masing-masing dengan indeks GIN.
+- **Trigram:** indeks GIN trigram pada `name` di kedua tabel.
+- **Indeks parsial:** `tour_packages(village_id) WHERE is_active`.
+
+**Bentuk query:** kandidat hasil dikumpulkan lewat `UNION` dua cabang (cocok di paket dan cocok di desa), dan teks query dipakai langsung, tidak lewat kolom CTE. Dua hal ini membuat planner bisa membangun *bitmap index scan*.
+
+**Diverifikasi dengan `EXPLAIN` pada SQL yang benar-benar dijalankan:**
+- Pada 30.000 paket, planner memilih sendiri kedua indeks paket. Waktu pencarian sekitar 13 ms di mesin pengembangan.
+- Indeks desa bisa dipakai oleh kondisi pencarian desa. Pada ribuan desa, *seq scan* memang lebih murah dan dipilih planner. Indeks desa baru menguntungkan di skala yang jauh lebih besar.
+
+**Bukti:** `TestFullTextSearch`, `TestSearchPaginationTotal`, `TestSearchUsesIndexes`, `TestSearch`, `TestHomeSearchSortAndTotal`.

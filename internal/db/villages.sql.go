@@ -123,7 +123,9 @@ func (q *Queries) DistrictExists(ctx context.Context, id int64) (bool, error) {
 }
 
 const getVillage = `-- name: GetVillage :one
-SELECT v.id, v.slug, v.name, v.description, v.district_id, v.address, v.lat, v.lng, v.contact_phone, v.contact_whatsapp, v.status, v.review_note, v.verified_by, v.verified_at, v.created_at, v.updated_at, d.name AS district_name, r.name AS regency_name
+SELECT v.id, v.slug, v.name, v.description, v.district_id, v.address, v.lat, v.lng, v.contact_phone, v.contact_whatsapp,
+       v.status, v.review_note, v.verified_by, v.verified_at, v.created_at, v.updated_at,
+       d.name AS district_name, r.name AS regency_name
 FROM villages v
 JOIN regions d ON d.id = v.district_id
 JOIN regions r ON r.id = d.parent_id
@@ -178,7 +180,9 @@ func (q *Queries) GetVillage(ctx context.Context, id int64) (GetVillageRow, erro
 }
 
 const getVillageBySlug = `-- name: GetVillageBySlug :one
-SELECT v.id, v.slug, v.name, v.description, v.district_id, v.address, v.lat, v.lng, v.contact_phone, v.contact_whatsapp, v.status, v.review_note, v.verified_by, v.verified_at, v.created_at, v.updated_at, d.name AS district_name, r.name AS regency_name
+SELECT v.id, v.slug, v.name, v.description, v.district_id, v.address, v.lat, v.lng, v.contact_phone, v.contact_whatsapp,
+       v.status, v.review_note, v.verified_by, v.verified_at, v.created_at, v.updated_at,
+       d.name AS district_name, r.name AS regency_name
 FROM villages v
 JOIN regions d ON d.id = v.district_id
 JOIN regions r ON r.id = d.parent_id

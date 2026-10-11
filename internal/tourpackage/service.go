@@ -219,7 +219,7 @@ func (s *Service) SetActive(ctx context.Context, villageID, id int64, active boo
 	return nil
 }
 
-func fromRow(r db.TourPackage) Package {
+func fromRow(r db.GetPackageRow) Package {
 	return Package{
 		ID: r.ID, VillageID: r.VillageID, Name: r.Name, Description: r.Description,
 		PricePerPersonIDR: r.PricePerPersonIdr, DurationDays: r.DurationDays, DurationNights: r.DurationNights,
@@ -250,7 +250,7 @@ func (s *Service) List(ctx context.Context, villageID int64) ([]Package, error) 
 	}
 	out := make([]Package, len(rows))
 	for i, r := range rows {
-		out[i] = fromRow(r)
+		out[i] = fromRow(db.GetPackageRow(r))
 	}
 	return out, nil
 }
@@ -490,6 +490,36 @@ const SearchPageSize = 24
 // SearchFilter holds the raw query-string filters; invalid values are ignored.
 type SearchFilter struct {
 	Regency, ActivityType, MinPrice, MaxPrice, Query, Page string
+	// Sort: SortRelevance, SortPriceAsc, SortPriceDesc or SortNewest. Empty means relevance
+	// when there is a query, otherwise cheapest first.
+	Sort string
+}
+
+// Sort orders (also the values of the "urut" query parameter).
+const (
+	SortRelevance = "relevan"
+	SortPriceAsc  = "termurah"
+	SortPriceDesc = "termahal"
+	SortNewest    = "terbaru"
+)
+
+// SortOptions lists the orders shown in the sort menu.
+var SortOptions = []string{SortRelevance, SortPriceAsc, SortPriceDesc, SortNewest}
+
+// sqlSort maps a public sort name to the query's sort key.
+var sqlSort = map[string]string{
+	SortRelevance: "relevance", SortPriceAsc: "price_asc", SortPriceDesc: "price_desc", SortNewest: "newest",
+}
+
+// EffectiveSort resolves an empty or invalid sort to the default for the query.
+func (f SearchFilter) EffectiveSort() string {
+	if _, ok := sqlSort[f.Sort]; ok && (f.Sort != SortRelevance || strings.TrimSpace(f.Query) != "") {
+		return f.Sort
+	}
+	if strings.TrimSpace(f.Query) != "" {
+		return SortRelevance
+	}
+	return SortPriceAsc
 }
 
 type SearchResult struct {
@@ -528,6 +558,10 @@ type SearchPage struct {
 	Results []SearchResult
 	Page    int
 	HasNext bool
+	// Total is the number of matches across all pages.
+	Total int64
+	// Sort is the order actually applied.
+	Sort string
 }
 
 func optionalID(s string) *int64 {
@@ -561,7 +595,20 @@ func likePattern(q string) *string {
 	return &p
 }
 
-// Search lists active packages of verified villages matching f, cheapest first.
+// searchQuery trims and bounds the free-text query; nil means no text filter.
+func searchQuery(q string) *string {
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return nil
+	}
+	if utf8.RuneCountInString(q) > 100 {
+		q = string([]rune(q)[:100])
+	}
+	return &q
+}
+
+// Search lists active packages of verified villages matching f. Text queries use the
+// full-text and trigram indexes (migrations/000004); see queries/packages.sql.
 func (s *Service) Search(ctx context.Context, f SearchFilter) (SearchPage, error) {
 	page := 1
 	if n, err := strconv.Atoi(f.Page); err == nil && n > 1 && n <= 1000 {
@@ -572,14 +619,19 @@ func (s *Service) Search(ctx context.Context, f SearchFilter) (SearchPage, error
 		ActivityTypeID: optionalID(f.ActivityType),
 		MinPrice:       optionalPrice(f.MinPrice),
 		MaxPrice:       optionalPrice(f.MaxPrice),
+		Query:          searchQuery(f.Query),
 		Pattern:        likePattern(f.Query),
+		Sort:           sqlSort[f.EffectiveSort()],
 		PageSize:       SearchPageSize + 1, // one extra row tells us whether a next page exists
 		PageOffset:     int32((page - 1) * SearchPageSize),
 	})
 	if err != nil {
 		return SearchPage{}, fmt.Errorf("search packages: %w", err)
 	}
-	out := SearchPage{Page: page, HasNext: len(rows) > SearchPageSize}
+	out := SearchPage{Page: page, HasNext: len(rows) > SearchPageSize, Sort: f.EffectiveSort()}
+	if len(rows) > 0 {
+		out.Total = rows[0].Total
+	}
 	if out.HasNext {
 		rows = rows[:SearchPageSize]
 	}

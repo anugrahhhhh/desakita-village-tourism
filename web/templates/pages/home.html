@@ -16,6 +16,7 @@
     {{with $f.Regency}}<input type="hidden" name="wilayah" value="{{.}}">{{end}}
     {{with $f.ActivityType}}<input type="hidden" name="kegiatan" value="{{.}}">{{end}}
     <button type="submit" class="btn-accent">{{t "search.submit"}}</button>
+    <p class="w-full px-2 pb-1 text-xs text-stone-600 sm:hidden">{{t "search.syntax_hint"}}</p>
   </form>
 </section>
 
@@ -72,7 +73,30 @@
   </form>
 </details>
 
-<h2 class="mb-4 text-2xl font-extrabold">{{if $d.Filtered}}{{t "search.results"}}{{else}}{{t "search.all_packages"}}{{end}}</h2>
+<div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+  <div>
+    <h2 class="text-2xl font-extrabold">{{if $d.Filtered}}{{t "search.results"}}{{else}}{{t "search.all_packages"}}{{end}}</h2>
+    <p class="text-sm text-stone-700" aria-live="polite">{{t "search.total" $d.Results.Total}}</p>
+  </div>
+  {{if $d.Results.Total}}
+    <form method="get" action="/" class="flex items-end gap-2">
+      {{with $f.Query}}<input type="hidden" name="q" value="{{.}}">{{end}}
+      {{with $f.Regency}}<input type="hidden" name="wilayah" value="{{.}}">{{end}}
+      {{with $f.ActivityType}}<input type="hidden" name="kegiatan" value="{{.}}">{{end}}
+      {{with $f.MinPrice}}<input type="hidden" name="harga_min" value="{{.}}">{{end}}
+      {{with $f.MaxPrice}}<input type="hidden" name="harga_maks" value="{{.}}">{{end}}
+      <div>
+        <label for="urut" class="field-label">{{t "search.sort"}}</label>
+        <select id="urut" name="urut" class="field-input min-w-44">
+          {{range $d.SortOptions}}
+            {{if or (ne . "relevan") $f.Query}}<option value="{{.}}" {{if eq . $d.Results.Sort}}selected{{end}}>{{template "sort_label" .}}</option>{{end}}
+          {{end}}
+        </select>
+      </div>
+      <button type="submit" class="btn-secondary">{{t "search.apply_sort"}}</button>
+    </form>
+  {{end}}
+</div>
 <ul class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
   {{range $d.Results.Results}}
     <li><a href="/desa/{{.VillageSlug}}/paket/{{.ID}}" class="{{template "card_link_class"}}">{{template "package_card_body" .}}</a></li>
@@ -110,4 +134,8 @@
     </li>
   </ol>
 </section>
+{{end}}
+
+{{define "sort_label"}}
+  {{- if eq . "relevan"}}{{t "search.sort_relevance"}}{{else if eq . "termurah"}}{{t "search.sort_price_asc"}}{{else if eq . "termahal"}}{{t "search.sort_price_desc"}}{{else}}{{t "search.sort_newest"}}{{end -}}
 {{end}}
