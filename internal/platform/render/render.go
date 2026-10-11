@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5/middleware"
@@ -43,7 +44,15 @@ func New(fsys fs.FS, tr *i18n.Translator, sm *scs.SessionManager, logger *slog.L
 	funcs := template.FuncMap{
 		"t": tr.T,
 		// rupiah formats an integer amount as "Rp 150.000".
-		"rupiah": formatRupiah,
+		"rupiah": FormatRupiah,
+		// date: "Sabtu, 15 Maret 2030"; month: "Maret 2030"; iso: "2030-03-15".
+		"date":  func(d time.Time) string { return FormatDate(tr, d) },
+		"month": func(d time.Time) string { return FormatMonth(tr, d) },
+		"iso":   func(d time.Time) string { return d.Format(time.DateOnly) },
+		"dateTime": func(t time.Time, loc *time.Location) string {
+			lt := t.In(loc)
+			return FormatDate(tr, lt) + " " + lt.Format("15:04")
+		},
 	}
 	pageFiles, err := fs.Glob(fsys, "templates/pages/*.html")
 	if err != nil {
@@ -91,6 +100,40 @@ func (rd *Renderer) Page(w http.ResponseWriter, r *http.Request, status int, pag
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	buf.WriteTo(w) //nolint:errcheck
+}
+
+// Partial renders a single named template (defined in page's template set) without the
+// layout, for HTMX fragment responses.
+func (rd *Renderer) Partial(w http.ResponseWriter, r *http.Request, status int, page, name string, data any) {
+	tmpl, ok := rd.pages[page]
+	if !ok {
+		rd.ServerError(w, r, fmt.Errorf("render: unknown page %q", page))
+		return
+	}
+	ctx := r.Context()
+	v := View{Lang: rd.tr.Lang(), CSRF: csrf.Token(ctx, rd.sm), Path: r.URL.Path, Data: data}
+	if viewer, ok := httpx.ViewerFrom(ctx); ok {
+		v.Viewer = &viewer
+	}
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, name, v); err != nil {
+		rd.ServerError(w, r, fmt.Errorf("render %s/%s: %w", page, name, err))
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	buf.WriteTo(w) //nolint:errcheck
+}
+
+// FormatDate formats a date with localized day and month names.
+func FormatDate(tr *i18n.Translator, d time.Time) string {
+	return fmt.Sprintf("%s, %d %s %d",
+		tr.T(fmt.Sprintf("date.weekday.%d", int(d.Weekday()))), d.Day(), tr.T(fmt.Sprintf("date.month.%d", int(d.Month()))), d.Year())
+}
+
+// FormatMonth formats "Maret 2030".
+func FormatMonth(tr *i18n.Translator, d time.Time) string {
+	return fmt.Sprintf("%s %d", tr.T(fmt.Sprintf("date.month.%d", int(d.Month()))), d.Year())
 }
 
 // ErrorData is the payload of the "error" page.
@@ -141,7 +184,8 @@ func (rd *Renderer) ServerError(w http.ResponseWriter, r *http.Request, err erro
 	})
 }
 
-func formatRupiah(amount int64) string {
+// FormatRupiah formats an integer amount as "Rp 150.000".
+func FormatRupiah(amount int64) string {
 	neg := amount < 0
 	if neg {
 		amount = -amount

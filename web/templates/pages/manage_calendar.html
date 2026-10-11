@@ -1,0 +1,72 @@
+{{define "title"}}{{t "manage.calendar.title"}} · {{.Data.Package.Name}}{{end}}
+{{define "content"}}
+{{$d := .Data}}{{$p := $d.Package}}{{$m := $d.Month}}{{$csrf := .CSRF}}
+{{$base := printf "/kelola/desa/%d/kalender/%d" $p.VillageID $p.ID}}
+<nav class="mb-6 flex flex-wrap gap-2 text-sm">
+  <a href="/kelola" class="btn-link">{{t "manage.nav.all_villages"}}</a><span aria-hidden="true">›</span>
+  <a href="/kelola/desa/{{$d.Village.ID}}" class="btn-link">{{$d.Village.Name}}</a>
+</nav>
+<h1 class="mb-2 text-2xl font-bold">{{t "manage.calendar.title"}}</h1>
+<p class="mb-4 text-stone-700">{{t "manage.calendar.explain"}}</p>
+
+{{if gt (len $d.Packages) 1}}
+  <ul class="mb-6 flex flex-wrap gap-2">
+    {{range $d.Packages}}
+      <li><a href="/kelola/desa/{{.VillageID}}/kalender/{{.ID}}?bulan={{$m.First.Format "2006-01"}}" class="inline-flex min-h-10 items-center rounded-full border px-4 text-sm {{if eq .ID $p.ID}}border-brand-700 bg-brand-600 text-white{{else}}border-stone-300 bg-white{{end}}">{{.Name}}</a></li>
+    {{end}}
+  </ul>
+{{end}}
+
+{{with $d.Selected}}
+  <section class="card mb-6 space-y-4 border-brand-600">
+    <h2 class="text-lg font-bold">{{date .Date}}</h2>
+    <p>{{t "manage.calendar.status" .Day.Reserved .Day.Quota}}{{if .Day.Closed}} · <strong>{{t "calendar.closed"}}</strong>{{end}}</p>
+    <form method="post" action="{{$base}}/kuota" class="flex flex-wrap items-end gap-3">
+      <input type="hidden" name="csrf_token" value="{{$csrf}}">
+      <input type="hidden" name="date" value="{{iso .Date}}">
+      <div>
+        <label for="quota" class="field-label">{{t "manage.calendar.quota"}}</label>
+        <input id="quota" name="quota" type="number" min="{{.Day.Reserved}}" max="1000" value="{{.Day.Quota}}" class="field-input w-32">
+      </div>
+      <button class="btn-primary">{{t "action.save"}}</button>
+    </form>
+    <form method="post" action="{{$base}}/tutup">
+      <input type="hidden" name="csrf_token" value="{{$csrf}}">
+      <input type="hidden" name="date" value="{{iso .Date}}">
+      {{if .Day.Closed}}
+        <input type="hidden" name="closed" value="0"><button class="btn-primary">{{t "manage.calendar.open"}}</button>
+      {{else}}
+        <input type="hidden" name="closed" value="1"><button class="btn-danger">{{t "manage.calendar.close"}}</button>
+        <p class="mt-2 text-sm text-stone-600">{{t "manage.calendar.close_hint"}}</p>
+      {{end}}
+    </form>
+  </section>
+{{end}}
+
+<section class="card">
+  <div class="mb-3 flex items-center justify-between gap-2">
+    {{if not $m.Prev.IsZero}}<a href="{{$base}}?bulan={{$m.Prev.Format "2006-01"}}" class="btn-link">‹ {{month $m.Prev}}</a>{{else}}<span></span>{{end}}
+    <h2 class="text-lg font-bold">{{month $m.First}}</h2>
+    {{if not $m.Next.IsZero}}<a href="{{$base}}?bulan={{$m.Next.Format "2006-01"}}" class="btn-link">{{month $m.Next}} ›</a>{{else}}<span></span>{{end}}
+  </div>
+  <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-stone-600" aria-hidden="true">
+    <span>{{t "calendar.mon"}}</span><span>{{t "calendar.tue"}}</span><span>{{t "calendar.wed"}}</span><span>{{t "calendar.thu"}}</span><span>{{t "calendar.fri"}}</span><span>{{t "calendar.sat"}}</span><span>{{t "calendar.sun"}}</span>
+  </div>
+  {{range $m.Weeks}}
+    <div class="mt-1 grid grid-cols-7 gap-1">
+      {{range .}}
+        {{if not .InMonth}}<span></span>
+        {{else if .Editable}}
+          <a href="{{$base}}?bulan={{$m.First.Format "2006-01"}}&tanggal={{iso .Date}}"
+             class="flex min-h-14 flex-col items-center justify-center rounded-lg border text-center {{if .Day.Closed}}border-stone-300 bg-stone-200 text-stone-600{{else if gt .Day.Reserved 0}}border-brand-600 bg-brand-50{{else}}border-stone-200 bg-white{{end}}">
+            <span class="text-base font-semibold">{{.Date.Day}}</span>
+            <span class="text-[11px]">{{if .Day.Closed}}{{t "calendar.closed"}}{{else}}{{.Day.Reserved}}/{{.Day.Quota}}{{end}}</span>
+          </a>
+        {{else}}
+          <span class="flex min-h-14 items-center justify-center rounded-lg text-stone-400">{{.Date.Day}}</span>
+        {{end}}
+      {{end}}
+    </div>
+  {{end}}
+</section>
+{{end}}

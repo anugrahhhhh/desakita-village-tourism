@@ -15,6 +15,10 @@
     </ul>
   {{end}}
   {{with $p.Description}}<p class="mt-6 whitespace-pre-line text-lg leading-relaxed text-stone-800">{{.}}</p>{{end}}
-  <p class="mt-8 rounded-lg bg-stone-100 px-4 py-3 text-stone-700">{{t "package.booking_soon"}}</p>
+  {{if .Data.Preview}}
+    <p class="mt-8 rounded-lg bg-stone-100 px-4 py-3 text-stone-700">{{t "package.preview_no_booking"}}</p>
+  {{else}}
+    <a href="/pesan/paket/{{$p.ID}}" class="btn-primary mt-8 w-full sm:w-auto">{{t "package.book"}}</a>
+  {{end}}
 </article>
 {{end}}

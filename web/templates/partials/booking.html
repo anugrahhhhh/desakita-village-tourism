@@ -1,0 +1,25 @@
+{{/* Shared booking pieces. */}}
+
+{{define "booking_status"}}
+  {{- if eq . "pending"}}<span class="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900">{{t "booking.status.pending"}}</span>
+  {{- else if eq . "confirmed"}}<span class="rounded-full bg-brand-100 px-3 py-1 text-sm font-semibold text-brand-900">{{t "booking.status.confirmed"}}</span>
+  {{- else if eq . "completed"}}<span class="rounded-full bg-sky-100 px-3 py-1 text-sm font-semibold text-sky-900">{{t "booking.status.completed"}}</span>
+  {{- else if eq . "rejected"}}<span class="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-900">{{t "booking.status.rejected"}}</span>
+  {{- else if eq . "cancelled"}}<span class="rounded-full bg-stone-200 px-3 py-1 text-sm font-semibold text-stone-800">{{t "booking.status.cancelled"}}</span>
+  {{- else}}<span class="rounded-full bg-stone-200 px-3 py-1 text-sm font-semibold text-stone-800">{{t "booking.status.expired"}}</span>{{end}}
+{{- end}}
+
+{{define "expires_in"}}{{/* . is hours left */}}
+  {{- if gt . 0}}{{t "booking.expires_in_hours" .}}{{else}}{{t "booking.expires_soon"}}{{end}}
+{{- end}}
+
+{{define "booking_facts"}}{{/* . is a booking.Row */}}
+  <dl class="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-3">
+    <dt class="font-semibold">{{t "booking.field.package"}}</dt><dd class="sm:col-span-2">{{.Package.Name}} · {{.Package.VillageName}}</dd>
+    <dt class="font-semibold">{{t "booking.field.date"}}</dt><dd class="sm:col-span-2">{{date .StartDate}}</dd>
+    <dt class="font-semibold">{{t "booking.field.party_size"}}</dt><dd class="sm:col-span-2">{{t "booking.people" .PartySize}}</dd>
+    <dt class="font-semibold">{{t "booking.field.total"}}</dt><dd class="sm:col-span-2">{{rupiah .TotalPriceIDR}} <span class="text-sm text-stone-600">{{t "booking.total_hint"}}</span></dd>
+    {{with .Note}}<dt class="font-semibold">{{t "booking.field.note"}}</dt><dd class="sm:col-span-2 whitespace-pre-line">{{.}}</dd>{{end}}
+    {{with .DecisionNote}}<dt class="font-semibold">{{t "booking.field.decision_note"}}</dt><dd class="sm:col-span-2 whitespace-pre-line">{{.}}</dd>{{end}}
+  </dl>
+{{end}}

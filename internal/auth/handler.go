@@ -56,7 +56,7 @@ func (h *Handler) LoadViewer(next http.Handler) http.Handler {
 			h.rd.ServerError(w, r, err)
 			return
 		default:
-			ctx = httpx.WithViewer(ctx, httpx.Viewer{ID: u.ID, Name: u.Name, Email: u.Email, IsAdmin: u.IsAdmin})
+			ctx = httpx.WithViewer(ctx, httpx.Viewer{ID: u.ID, Name: u.Name, Email: u.Email, Phone: u.Phone, IsAdmin: u.IsAdmin})
 		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

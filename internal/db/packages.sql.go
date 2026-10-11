@@ -164,6 +164,48 @@ func (q *Queries) GetPackageForBooking(ctx context.Context, id int64) (GetPackag
 	return i, err
 }
 
+const getPackageSummary = `-- name: GetPackageSummary :one
+SELECT p.id, p.village_id, p.name, p.default_quota, p.price_per_person_idr, p.is_active,
+       v.name AS village_name, v.slug AS village_slug, v.status AS village_status,
+       v.contact_phone AS village_phone, v.contact_whatsapp AS village_whatsapp
+FROM tour_packages p
+JOIN villages v ON v.id = p.village_id
+WHERE p.id = $1
+`
+
+type GetPackageSummaryRow struct {
+	ID                int64
+	VillageID         int64
+	Name              string
+	DefaultQuota      int32
+	PricePerPersonIdr int64
+	IsActive          bool
+	VillageName       string
+	VillageSlug       string
+	VillageStatus     string
+	VillagePhone      string
+	VillageWhatsapp   *string
+}
+
+func (q *Queries) GetPackageSummary(ctx context.Context, id int64) (GetPackageSummaryRow, error) {
+	row := q.db.QueryRow(ctx, getPackageSummary, id)
+	var i GetPackageSummaryRow
+	err := row.Scan(
+		&i.ID,
+		&i.VillageID,
+		&i.Name,
+		&i.DefaultQuota,
+		&i.PricePerPersonIdr,
+		&i.IsActive,
+		&i.VillageName,
+		&i.VillageSlug,
+		&i.VillageStatus,
+		&i.VillagePhone,
+		&i.VillageWhatsapp,
+	)
+	return i, err
+}
+
 const insertPackageMedia = `-- name: InsertPackageMedia :one
 INSERT INTO media (package_id, path, mime, bytes, sort_order, consent_confirmed, uploaded_by)
 VALUES ($1, $2, $3, $4, (SELECT coalesce(max(sort_order), 0) + 1 FROM media WHERE package_id = $1), true, $5)
@@ -306,6 +348,62 @@ func (q *Queries) ListPackageMedia(ctx context.Context, packageID *int64) ([]Lis
 	for rows.Next() {
 		var i ListPackageMediaRow
 		if err := rows.Scan(&i.ID, &i.Path); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPackageSummariesByVillage = `-- name: ListPackageSummariesByVillage :many
+SELECT p.id, p.village_id, p.name, p.default_quota, p.price_per_person_idr, p.is_active,
+       v.name AS village_name, v.slug AS village_slug, v.status AS village_status,
+       v.contact_phone AS village_phone, v.contact_whatsapp AS village_whatsapp
+FROM tour_packages p
+JOIN villages v ON v.id = p.village_id
+WHERE p.village_id = $1
+ORDER BY p.is_active DESC, p.name
+`
+
+type ListPackageSummariesByVillageRow struct {
+	ID                int64
+	VillageID         int64
+	Name              string
+	DefaultQuota      int32
+	PricePerPersonIdr int64
+	IsActive          bool
+	VillageName       string
+	VillageSlug       string
+	VillageStatus     string
+	VillagePhone      string
+	VillageWhatsapp   *string
+}
+
+func (q *Queries) ListPackageSummariesByVillage(ctx context.Context, villageID int64) ([]ListPackageSummariesByVillageRow, error) {
+	rows, err := q.db.Query(ctx, listPackageSummariesByVillage, villageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPackageSummariesByVillageRow
+	for rows.Next() {
+		var i ListPackageSummariesByVillageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VillageID,
+			&i.Name,
+			&i.DefaultQuota,
+			&i.PricePerPersonIdr,
+			&i.IsActive,
+			&i.VillageName,
+			&i.VillageSlug,
+			&i.VillageStatus,
+			&i.VillagePhone,
+			&i.VillageWhatsapp,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

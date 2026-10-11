@@ -7,6 +7,12 @@
   {{template "status_badge" $v.Status}}
 </div>
 {{template "status_banner" $v}}
+<section class="card mb-6" aria-labelledby="bookings-heading">
+  <h2 id="bookings-heading" class="mb-4 text-xl font-bold">{{t "manage.bookings.title"}}</h2>
+  <div hx-get="/kelola/desa/{{$v.ID}}/pemesanan/panel" hx-trigger="load" hx-swap="innerHTML">
+    <a href="/kelola/desa/{{$v.ID}}/pemesanan" class="btn-link">{{t "manage.bookings.open"}}</a>
+  </div>
+</section>
 <div class="grid gap-4 sm:grid-cols-2">
   <a href="/kelola/desa/{{$v.ID}}/paket" class="card hover:border-brand-600">
     <h2 class="text-lg font-semibold">{{t "manage.village.packages"}}</h2>

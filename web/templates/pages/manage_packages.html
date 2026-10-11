@@ -19,6 +19,7 @@
       </div>
       <div class="mt-4 flex flex-wrap items-center gap-4">
         <a href="/kelola/desa/{{$v.ID}}/paket/{{.ID}}" class="btn-link">{{t "action.edit"}}</a>
+        <a href="/kelola/desa/{{$v.ID}}/kalender/{{.ID}}" class="btn-link">{{t "manage.calendar.title"}}</a>
         <a href="/kelola/desa/{{$v.ID}}/paket/{{.ID}}/foto" class="btn-link">{{t "manage.village.photos"}}</a>
         <a href="/desa/{{$v.Slug}}/paket/{{.ID}}" class="btn-link">{{t "manage.village.public_page"}}</a>
         <form method="post" action="/kelola/desa/{{$v.ID}}/paket/{{.ID}}/status">

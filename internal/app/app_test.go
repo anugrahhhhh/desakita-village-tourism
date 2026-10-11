@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -27,6 +28,11 @@ func newServer(t *testing.T) *httptest.Server {
 // newApp starts the full application on a fresh database and temp upload dir.
 func newApp(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	t.Helper()
+	return newAppWithClock(t, nil)
+}
+
+func newAppWithClock(t *testing.T, now func() time.Time) (*httptest.Server, *pgxpool.Pool) {
+	t.Helper()
 	uploads := t.TempDir()
 	cfg, err := config.Load(func(k string) string {
 		switch k {
@@ -41,7 +47,7 @@ func newApp(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 		t.Fatal(err)
 	}
 	pool := dbtest.New(t)
-	a, err := app.New(app.Options{Config: cfg, Pool: pool, Logger: slog.New(slog.DiscardHandler)})
+	a, err := app.New(app.Options{Config: cfg, Pool: pool, Logger: slog.New(slog.DiscardHandler), Now: now})
 	if err != nil {
 		t.Fatal(err)
 	}

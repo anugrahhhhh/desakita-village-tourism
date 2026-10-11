@@ -71,3 +71,20 @@ FROM tour_packages p
 JOIN villages v ON v.id = p.village_id
 WHERE p.id = $1
 FOR SHARE OF p, v;
+
+-- name: GetPackageSummary :one
+SELECT p.id, p.village_id, p.name, p.default_quota, p.price_per_person_idr, p.is_active,
+       v.name AS village_name, v.slug AS village_slug, v.status AS village_status,
+       v.contact_phone AS village_phone, v.contact_whatsapp AS village_whatsapp
+FROM tour_packages p
+JOIN villages v ON v.id = p.village_id
+WHERE p.id = $1;
+
+-- name: ListPackageSummariesByVillage :many
+SELECT p.id, p.village_id, p.name, p.default_quota, p.price_per_person_idr, p.is_active,
+       v.name AS village_name, v.slug AS village_slug, v.status AS village_status,
+       v.contact_phone AS village_phone, v.contact_whatsapp AS village_whatsapp
+FROM tour_packages p
+JOIN villages v ON v.id = p.village_id
+WHERE p.village_id = $1
+ORDER BY p.is_active DESC, p.name;

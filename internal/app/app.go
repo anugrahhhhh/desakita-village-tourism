@@ -38,6 +38,8 @@ type Options struct {
 	Logger *slog.Logger
 	// SessionCleanup is how often expired sessions are purged; 0 disables (tests).
 	SessionCleanup time.Duration
+	// Now overrides the clock for booking rules (tests); nil means time.Now.
+	Now func() time.Time
 }
 
 // App is the wired application: an HTTP handler plus background workers.
@@ -82,7 +84,9 @@ func New(opts Options) (*App, error) {
 	bookingSvc := booking.NewService(opts.Pool, packageLookup{packageSvc}, villageSvc, booking.Config{
 		PendingTTL: opts.Config.BookingPendingTTL,
 		Location:   opts.Config.Location,
+		Now:        opts.Now,
 	})
+	bookingH := booking.NewHandler(bookingSvc, catalog{packageSvc, villageSvc}, sm, rd, tr)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer)
@@ -117,6 +121,7 @@ func New(opts Options) (*App, error) {
 		authH.Routes(r)
 		villageH.PublicRoutes(r)
 		packageH.PublicRoutes(r)
+		bookingH.TravelerRoutes(r)
 
 		r.Route("/kelola", func(r chi.Router) {
 			r.Use(httpx.RequireLogin)
@@ -125,6 +130,7 @@ func New(opts Options) (*App, error) {
 				r.Use(villageH.RequireManager)
 				villageH.ManageRoutes(r)
 				r.Route("/paket", packageH.ManageRoutes)
+				bookingH.ManageRoutes(r)
 			})
 		})
 	})

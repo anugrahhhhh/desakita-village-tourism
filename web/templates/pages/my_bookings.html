@@ -1,0 +1,21 @@
+{{define "title"}}{{t "booking.mine.title"}}{{end}}
+{{define "content"}}
+<h1 class="mb-6 text-2xl font-bold">{{t "booking.mine.title"}}</h1>
+<ul class="space-y-4">
+  {{range .Data.Rows}}
+    <li>
+      <a href="/pemesanan/{{.ID}}" class="card block hover:border-brand-600">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 class="font-semibold">{{.Package.Name}}</h2>
+            <p class="text-stone-700">{{.Package.VillageName}} · {{date .StartDate}} · {{t "booking.people" .PartySize}}</p>
+          </div>
+          {{template "booking_status" .Status}}
+        </div>
+      </a>
+    </li>
+  {{else}}
+    <li class="card text-stone-700">{{t "booking.mine.empty"}}</li>
+  {{end}}
+</ul>
+{{end}}

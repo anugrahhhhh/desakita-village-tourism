@@ -1,0 +1,39 @@
+{{define "title"}}{{t "booking.detail.title" .Data.Row.ID}}{{end}}
+{{define "content"}}
+{{$d := .Data}}{{$b := $d.Row}}
+<div class="mx-auto max-w-2xl space-y-6">
+  <nav class="text-sm"><a href="/pemesanan" class="btn-link">{{t "booking.mine.title"}}</a></nav>
+  <div class="flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-bold">{{t "booking.detail.title" $b.ID}}</h1>
+    {{template "booking_status" $b.Status}}
+  </div>
+
+  {{if eq $b.Status "pending"}}
+    <p class="rounded-lg bg-amber-50 px-4 py-3 text-amber-900">{{t "booking.mine.pending_explain" (dateTime $b.ExpiresAt $d.Loc)}}</p>
+  {{else if eq $b.Status "confirmed"}}
+    <p class="rounded-lg bg-brand-50 px-4 py-3 text-brand-900">{{t "booking.mine.confirmed_explain"}}</p>
+  {{else if eq $b.Status "expired"}}
+    <p class="rounded-lg bg-stone-100 px-4 py-3">{{t "booking.mine.expired_explain"}}</p>
+  {{end}}
+
+  <section class="card">{{template "booking_facts" $b}}</section>
+
+  <section class="card space-y-3">
+    <h2 class="text-lg font-bold">{{t "booking.detail.village_contact"}}</h2>
+    <p>{{$b.Package.VillageName}} · <a href="tel:{{$b.Package.VillagePhone}}" class="btn-link">{{$b.Package.VillagePhone}}</a></p>
+    {{with $d.WALink}}<a href="{{.}}" target="_blank" rel="noopener" class="btn-primary">{{t "booking.wa.ask_village"}}</a>{{end}}
+  </section>
+
+  {{if $d.Actions.Cancel}}
+    <section class="card">
+      <h2 class="text-lg font-bold">{{t "booking.cancel.heading"}}</h2>
+      <form method="post" action="/pemesanan/{{$b.ID}}/batal" class="mt-3 space-y-3">
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <label for="note" class="field-label">{{t "booking.cancel.reason_optional"}}</label>
+        <textarea id="note" name="note" rows="2" maxlength="500" class="field-input py-2"></textarea>
+        <button type="submit" class="btn-danger">{{t "booking.cancel.submit"}}</button>
+      </form>
+    </section>
+  {{end}}
+</div>
+{{end}}

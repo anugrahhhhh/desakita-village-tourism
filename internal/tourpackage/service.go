@@ -415,3 +415,52 @@ func (s *Service) BookingInfo(ctx context.Context, tx pgx.Tx, id int64) (Booking
 		DefaultQuota: r.DefaultQuota, IsActive: r.IsActive, VillageStatus: r.VillageStatus,
 	}, nil
 }
+
+// Summary is a package with its village's display and contact fields.
+type Summary struct {
+	ID, VillageID     int64
+	Name              string
+	DefaultQuota      int32
+	PricePerPersonIDR int64
+	IsActive          bool
+	VillageName       string
+	VillageSlug       string
+	VillageStatus     string
+	VillagePhone      string
+	VillageWhatsApp   string
+}
+
+func summaryFromRow(r db.GetPackageSummaryRow) Summary {
+	s := Summary{
+		ID: r.ID, VillageID: r.VillageID, Name: r.Name, DefaultQuota: r.DefaultQuota,
+		PricePerPersonIDR: r.PricePerPersonIdr, IsActive: r.IsActive, VillageName: r.VillageName,
+		VillageSlug: r.VillageSlug, VillageStatus: r.VillageStatus, VillagePhone: r.VillagePhone,
+	}
+	if r.VillageWhatsapp != nil {
+		s.VillageWhatsApp = *r.VillageWhatsapp
+	}
+	return s
+}
+
+func (s *Service) Summary(ctx context.Context, id int64) (Summary, error) {
+	r, err := s.q.GetPackageSummary(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Summary{}, ErrNotFound
+	}
+	if err != nil {
+		return Summary{}, fmt.Errorf("get package summary: %w", err)
+	}
+	return summaryFromRow(r), nil
+}
+
+func (s *Service) VillageSummaries(ctx context.Context, villageID int64) ([]Summary, error) {
+	rows, err := s.q.ListPackageSummariesByVillage(ctx, villageID)
+	if err != nil {
+		return nil, fmt.Errorf("list package summaries: %w", err)
+	}
+	out := make([]Summary, len(rows))
+	for i, r := range rows {
+		out[i] = summaryFromRow(db.GetPackageSummaryRow(r))
+	}
+	return out, nil
+}

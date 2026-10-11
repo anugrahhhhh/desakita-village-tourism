@@ -1,0 +1,55 @@
+{{define "title"}}{{t "manage.bookings.title"}} · {{.Data.Village.Name}}{{end}}
+{{define "content"}}
+<nav class="mb-6 flex flex-wrap gap-2 text-sm">
+  <a href="/kelola" class="btn-link">{{t "manage.nav.all_villages"}}</a><span aria-hidden="true">›</span>
+  <a href="/kelola/desa/{{.Data.Village.ID}}" class="btn-link">{{.Data.Village.Name}}</a>
+</nav>
+<h1 class="mb-6 text-2xl font-bold">{{t "manage.bookings.title"}}</h1>
+{{template "bookings_lists" .}}
+{{end}}
+
+{{define "bookings_lists"}}{{/* . is the root View; .Data is booking.dashboardData */}}
+{{$d := .Data}}{{$base := printf "/kelola/desa/%d/pemesanan" $d.Village.ID}}
+<div class="space-y-8">
+  <section>
+    <h2 class="mb-3 text-lg font-bold">{{t "manage.bookings.pending"}} <span class="text-stone-500">({{len $d.Pending}})</span></h2>
+    <ul class="space-y-3">
+      {{range $i, $r := $d.Pending}}{{if or (eq $d.Limit 0) (lt $i $d.Limit)}}
+        <li><a href="{{$base}}/{{$r.ID}}" class="card flex flex-wrap items-center justify-between gap-2 border-amber-200 hover:border-amber-500">
+          <span><strong>{{$r.ContactName}}</strong> · {{$r.Package.Name}} · {{date $r.StartDate}} · {{t "booking.people" $r.PartySize}}</span>
+          <span class="text-sm font-semibold text-amber-800">{{template "expires_in" $r.ExpiresInHours}}</span>
+        </a></li>
+      {{end}}{{else}}
+        <li class="text-stone-600">{{t "manage.bookings.none_pending"}}</li>
+      {{end}}
+    </ul>
+  </section>
+  <section>
+    <h2 class="mb-3 text-lg font-bold">{{t "manage.bookings.upcoming"}} <span class="text-stone-500">({{len $d.Upcoming}})</span></h2>
+    <ul class="space-y-3">
+      {{range $i, $r := $d.Upcoming}}{{if or (eq $d.Limit 0) (lt $i $d.Limit)}}
+        <li><a href="{{$base}}/{{$r.ID}}" class="card flex flex-wrap items-center justify-between gap-2 hover:border-brand-600">
+          <span><strong>{{date $r.StartDate}}</strong> · {{$r.ContactName}} · {{$r.Package.Name}}</span>
+          <span class="text-sm">{{t "booking.people" $r.PartySize}}</span>
+        </a></li>
+      {{end}}{{else}}
+        <li class="text-stone-600">{{t "manage.bookings.none_upcoming"}}</li>
+      {{end}}
+    </ul>
+  </section>
+  <section>
+    <h2 class="mb-3 text-lg font-bold">{{t "manage.bookings.to_complete"}} <span class="text-stone-500">({{len $d.ToComplete}})</span></h2>
+    <ul class="space-y-3">
+      {{range $i, $r := $d.ToComplete}}{{if or (eq $d.Limit 0) (lt $i $d.Limit)}}
+        <li><a href="{{$base}}/{{$r.ID}}" class="card flex flex-wrap items-center justify-between gap-2 hover:border-brand-600">
+          <span>{{date $r.StartDate}} · {{$r.ContactName}} · {{$r.Package.Name}}</span>
+          <span class="btn-link">{{t "manage.bookings.mark_done"}}</span>
+        </a></li>
+      {{end}}{{else}}
+        <li class="text-stone-600">{{t "manage.bookings.none_to_complete"}}</li>
+      {{end}}
+    </ul>
+  </section>
+  {{if $d.Limit}}<a href="{{$base}}" class="btn-link">{{t "manage.bookings.see_all"}}</a>{{end}}
+</div>
+{{end}}

@@ -14,6 +14,7 @@ type Viewer struct {
 	ID      int64
 	Name    string
 	Email   string
+	Phone   string
 	IsAdmin bool
 }
 

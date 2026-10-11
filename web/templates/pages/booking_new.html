@@ -1,0 +1,87 @@
+{{define "title"}}{{t "booking.new.title"}} · {{.Data.Package.Name}}{{end}}
+{{define "content"}}
+{{$d := .Data}}{{$p := $d.Package}}{{$sel := index $d.Values "start_date"}}
+<nav class="mb-4 text-sm"><a href="/desa/{{$p.VillageSlug}}/paket/{{$p.ID}}" class="btn-link">{{$p.Name}} · {{$p.VillageName}}</a></nav>
+<h1 class="mb-2 text-2xl font-bold">{{t "booking.new.title"}}</h1>
+<p class="mb-6 text-stone-700">{{t "booking.new.explain" (date $d.FirstDate) (date $d.LastDate)}}</p>
+
+{{with $d.ErrorKey}}<p role="alert" class="mb-4 rounded-lg bg-red-50 px-3 py-2 text-red-800">{{t .}}</p>{{end}}
+
+<form method="post" action="/pesan/paket/{{$p.ID}}" class="space-y-6" novalidate>
+  <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+
+  <section id="calendar" class="card">
+    {{$m := $d.Month}}
+    <div class="mb-3 flex items-center justify-between gap-2">
+      {{if not $m.Prev.IsZero}}
+        <a href="?bulan={{$m.Prev.Format "2006-01"}}" hx-get="?bulan={{$m.Prev.Format "2006-01"}}" hx-select="#calendar" hx-target="#calendar" hx-swap="outerHTML" class="btn-link" aria-label="{{t "calendar.prev"}}">‹ {{month $m.Prev}}</a>
+      {{else}}<span></span>{{end}}
+      <h2 class="text-lg font-bold">{{month $m.First}}</h2>
+      {{if not $m.Next.IsZero}}
+        <a href="?bulan={{$m.Next.Format "2006-01"}}" hx-get="?bulan={{$m.Next.Format "2006-01"}}" hx-select="#calendar" hx-target="#calendar" hx-swap="outerHTML" class="btn-link" aria-label="{{t "calendar.next"}}">{{month $m.Next}} ›</a>
+      {{else}}<span></span>{{end}}
+    </div>
+    <fieldset>
+      <legend class="sr-only">{{t "booking.field.date"}}</legend>
+      <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-stone-600" aria-hidden="true">
+        <span>{{t "calendar.mon"}}</span><span>{{t "calendar.tue"}}</span><span>{{t "calendar.wed"}}</span><span>{{t "calendar.thu"}}</span><span>{{t "calendar.fri"}}</span><span>{{t "calendar.sat"}}</span><span>{{t "calendar.sun"}}</span>
+      </div>
+      {{range $m.Weeks}}
+        <div class="mt-1 grid grid-cols-7 gap-1">
+          {{range .}}
+            {{if not .InMonth}}<span></span>
+            {{else if .Bookable}}
+              <label class="flex min-h-14 cursor-pointer flex-col items-center justify-center rounded-lg border border-brand-100 bg-brand-50 text-brand-900 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-600 has-[:checked]:text-white">
+                <input type="radio" name="start_date" value="{{iso .Date}}" class="sr-only" {{if eq (iso .Date) $sel}}checked{{end}}>
+                <span class="text-base font-semibold">{{.Date.Day}}</span>
+                <span class="text-[11px]">{{t "calendar.remaining" .Day.Remaining}}</span>
+              </label>
+            {{else}}
+              <span class="flex min-h-14 flex-col items-center justify-center rounded-lg text-stone-400">
+                <span class="text-base">{{.Date.Day}}</span>
+                {{if .Day.Closed}}<span class="text-[11px]">{{t "calendar.closed"}}</span>{{else if and (eq .Day.Remaining 0) (gt .Day.Quota 0)}}<span class="text-[11px]">{{t "calendar.full"}}</span>{{end}}
+              </span>
+            {{end}}
+          {{end}}
+        </div>
+      {{end}}
+    </fieldset>
+    {{with index $d.Errors "start_date"}}<p class="field-error">{{t .}}</p>{{end}}
+  </section>
+
+  {{if .Viewer}}
+    <section class="card space-y-5">
+      <div>
+        <label for="party_size" class="field-label">{{t "booking.field.party_size"}}</label>
+        <input id="party_size" name="party_size" type="number" min="1" max="1000" required class="field-input max-w-40" value="{{index $d.Values "party_size"}}">
+        <p class="mt-1 text-sm text-stone-600">{{rupiah $p.PricePerPersonIDR}} {{t "package.per_person"}}</p>
+        {{with index $d.Errors "party_size"}}<p class="field-error">{{t .}}</p>{{end}}
+      </div>
+      <div class="grid gap-5 sm:grid-cols-2">
+        <div>
+          <label for="contact_name" class="field-label">{{t "booking.field.contact_name"}}</label>
+          <input id="contact_name" name="contact_name" required maxlength="100" autocomplete="name" class="field-input" value="{{index $d.Values "contact_name"}}">
+          {{with index $d.Errors "contact_name"}}<p class="field-error">{{t .}}</p>{{end}}
+        </div>
+        <div>
+          <label for="contact_phone" class="field-label">{{t "booking.field.contact_phone"}}</label>
+          <input id="contact_phone" name="contact_phone" type="tel" required autocomplete="tel" class="field-input" value="{{index $d.Values "contact_phone"}}">
+          {{with index $d.Errors "contact_phone"}}<p class="field-error">{{t .}}</p>{{end}}
+        </div>
+      </div>
+      <div>
+        <label for="note" class="field-label">{{t "booking.field.note_optional"}}</label>
+        <textarea id="note" name="note" rows="3" maxlength="1000" class="field-input py-2" placeholder="{{t "booking.field.note_hint"}}">{{index $d.Values "note"}}</textarea>
+        {{with index $d.Errors "note"}}<p class="field-error">{{t .}}</p>{{end}}
+      </div>
+      <p class="text-sm text-stone-700">{{t "booking.new.payment_note"}}</p>
+      <button type="submit" class="btn-primary w-full sm:w-auto">{{t "booking.new.submit"}}</button>
+    </section>
+  {{else}}
+    <section class="card">
+      <p class="mb-4 text-stone-700">{{t "booking.new.login_required"}}</p>
+      <a href="/masuk?next=/pesan/paket/{{$p.ID}}" class="btn-primary">{{t "booking.new.login"}}</a>
+    </section>
+  {{end}}
+</form>
+{{end}}
