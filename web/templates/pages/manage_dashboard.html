@@ -1,0 +1,19 @@
+{{define "title"}}{{t "manage.dashboard.title"}}{{end}}
+{{define "content"}}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+  <h1 class="text-2xl font-bold">{{t "manage.dashboard.title"}}</h1>
+  <a href="/kelola/desa/baru" class="btn-primary">{{t "manage.dashboard.register_village"}}</a>
+</div>
+<ul class="space-y-4">
+  {{range .Data.Villages}}
+    <li>
+      <a href="/kelola/desa/{{.ID}}" class="card flex flex-wrap items-center justify-between gap-3 hover:border-brand-600">
+        <span class="text-lg font-semibold">{{.Name}}</span>
+        {{template "status_badge" .Status}}
+      </a>
+    </li>
+  {{else}}
+    <li class="card text-stone-700">{{t "manage.dashboard.empty"}}</li>
+  {{end}}
+</ul>
+{{end}}

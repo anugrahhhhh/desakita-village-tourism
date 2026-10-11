@@ -9,7 +9,9 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/alexedwards/scs/v2"
 )
@@ -39,9 +41,14 @@ func Rotate(ctx context.Context, sm *scs.SessionManager) {
 	sm.Remove(ctx, sessionKey)
 }
 
+// multipartMemory is how much of a multipart body is kept in memory; the rest spills to
+// temp files. Bodies are size-limited upstream anyway.
+const multipartMemory = 8 << 20
+
 // Protect rejects unsafe requests whose token does not match the session's. Body size must
-// already be limited, because reading the form field parses the request body.
-func Protect(sm *scs.SessionManager, onFail http.Handler) func(http.Handler) http.Handler {
+// already be limited, because reading the form field parses the request body; a body over
+// the limit is answered by onTooLarge.
+func Protect(sm *scs.SessionManager, onFail, onTooLarge http.Handler) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
@@ -52,6 +59,17 @@ func Protect(sm *scs.SessionManager, onFail http.Handler) func(http.Handler) htt
 			want := sm.GetString(r.Context(), sessionKey)
 			got := r.Header.Get(HeaderName)
 			if got == "" {
+				var err error
+				if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+					err = r.ParseMultipartForm(multipartMemory)
+				} else {
+					err = r.ParseForm()
+				}
+				var tooLarge *http.MaxBytesError
+				if errors.As(err, &tooLarge) {
+					onTooLarge.ServeHTTP(w, r)
+					return
+				}
 				got = r.PostFormValue(FieldName)
 			}
 			if want == "" || subtle.ConstantTimeCompare([]byte(want), []byte(got)) != 1 {

@@ -1,0 +1,58 @@
+{{define "title"}}{{if .Data.IsNew}}{{t "package.new.title"}}{{else}}{{t "package.edit.title"}}{{end}}{{end}}
+{{define "content"}}
+{{$d := .Data}}
+<div class="mx-auto max-w-2xl">
+  {{template "manage_nav" $d.Village}}
+  <h1 class="mb-6 text-2xl font-bold">{{if $d.IsNew}}{{t "package.new.title"}}{{else}}{{t "package.edit.title"}}{{end}}</h1>
+  <form method="post" action="/kelola/desa/{{$d.Village.ID}}/paket/{{if $d.IsNew}}baru{{else}}{{$d.Package.ID}}{{end}}" class="card space-y-5" novalidate>
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <div>
+      <label for="name" class="field-label">{{t "package.field.name"}}</label>
+      <input id="name" name="name" required maxlength="120" class="field-input" value="{{$d.Values.Name}}">
+      {{with index $d.Errors "name"}}<p class="field-error">{{t .}}</p>{{end}}
+    </div>
+    <div>
+      <label for="description" class="field-label">{{t "package.field.description"}}</label>
+      <textarea id="description" name="description" rows="6" maxlength="5000" class="field-input py-2">{{$d.Values.Description}}</textarea>
+      <p class="mt-1 text-sm text-stone-600">{{t "package.field.description_hint"}}</p>
+      {{with index $d.Errors "description"}}<p class="field-error">{{t .}}</p>{{end}}
+    </div>
+    <div>
+      <label for="price" class="field-label">{{t "package.field.price"}}</label>
+      <input id="price" name="price" inputmode="numeric" required class="field-input" value="{{$d.Values.Price}}" placeholder="150000">
+      {{with index $d.Errors "price"}}<p class="field-error">{{t .}}</p>{{end}}
+    </div>
+    <div class="grid gap-5 sm:grid-cols-3">
+      <div>
+        <label for="duration_days" class="field-label">{{t "package.field.days"}}</label>
+        <input id="duration_days" name="duration_days" type="number" min="1" max="30" required class="field-input" value="{{$d.Values.DurationDays}}">
+        {{with index $d.Errors "duration_days"}}<p class="field-error">{{t .}}</p>{{end}}
+      </div>
+      <div>
+        <label for="duration_nights" class="field-label">{{t "package.field.nights"}}</label>
+        <input id="duration_nights" name="duration_nights" type="number" min="0" max="30" required class="field-input" value="{{$d.Values.DurationNights}}">
+        {{with index $d.Errors "duration_nights"}}<p class="field-error">{{t .}}</p>{{end}}
+      </div>
+      <div>
+        <label for="default_quota" class="field-label">{{t "package.field.quota"}}</label>
+        <input id="default_quota" name="default_quota" type="number" min="1" max="1000" required class="field-input" value="{{$d.Values.DefaultQuota}}">
+        {{with index $d.Errors "default_quota"}}<p class="field-error">{{t .}}</p>{{end}}
+      </div>
+    </div>
+    <p class="text-sm text-stone-600">{{t "package.field.quota_hint"}}</p>
+    <fieldset>
+      <legend class="field-label">{{t "package.field.activity_types"}}</legend>
+      <div class="grid gap-2 sm:grid-cols-2">
+        {{range $d.ActivityTypes}}
+          <label class="flex min-h-12 items-center gap-3 rounded-lg border border-stone-200 bg-white px-3">
+            <input type="checkbox" name="activity_types" value="{{.ID}}" class="size-5" {{if index $d.Selected (printf "%d" .ID)}}checked{{end}}>
+            <span>{{.Name}}</span>
+          </label>
+        {{end}}
+      </div>
+      {{with index $d.Errors "activity_types"}}<p class="field-error">{{t .}}</p>{{end}}
+    </fieldset>
+    <button type="submit" class="btn-primary w-full sm:w-auto">{{if $d.IsNew}}{{t "package.new.submit"}}{{else}}{{t "action.save"}}{{end}}</button>
+  </form>
+</div>
+{{end}}

@@ -128,6 +128,10 @@ func (rd *Renderer) Forbidden(w http.ResponseWriter, r *http.Request) {
 	rd.errorPage(w, r, http.StatusForbidden, ErrorData{TitleKey: "error.forbidden.title", MessageKey: "error.forbidden.message"})
 }
 
+func (rd *Renderer) TooLarge(w http.ResponseWriter, r *http.Request) {
+	rd.errorPage(w, r, http.StatusRequestEntityTooLarge, ErrorData{TitleKey: "error.too_large.title", MessageKey: "error.too_large.message"})
+}
+
 // ServerError logs err with the request ID and shows a generic page; details never reach the user.
 func (rd *Renderer) ServerError(w http.ResponseWriter, r *http.Request, err error) {
 	reqID := middleware.GetReqID(r.Context())

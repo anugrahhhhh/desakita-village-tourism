@@ -25,7 +25,14 @@ func newServer(t *testing.T) *httptest.Server {
 	mux.HandleFunc("POST /submit", func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "ok") }) //nolint:errcheck
 	mux.HandleFunc("POST /rotate", func(w http.ResponseWriter, r *http.Request) { Rotate(r.Context(), sm) })
 	fail := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusForbidden) })
-	srv := httptest.NewServer(sm.LoadAndSave(Protect(sm, fail)(mux)))
+	tooLarge := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusRequestEntityTooLarge) })
+	limited := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, 1024)
+			next.ServeHTTP(w, r)
+		})
+	}
+	srv := httptest.NewServer(sm.LoadAndSave(limited(Protect(sm, fail, tooLarge)(mux))))
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -105,6 +112,15 @@ func TestProtect(t *testing.T) {
 		getToken(t, victim, srv.URL)
 		if code := postForm(t, victim, srv.URL+"/submit", url.Values{FieldName: {tok}}, nil); code != http.StatusForbidden {
 			t.Errorf("status = %d, want 403", code)
+		}
+	})
+
+	t.Run("oversized body gets onTooLarge, not a CSRF failure", func(t *testing.T) {
+		c := newClient(t)
+		tok := getToken(t, c, srv.URL)
+		big := url.Values{FieldName: {tok}, "blob": {strings.Repeat("x", 4096)}}
+		if code := postForm(t, c, srv.URL+"/submit", big, nil); code != http.StatusRequestEntityTooLarge {
+			t.Errorf("status = %d, want 413", code)
 		}
 	})
 

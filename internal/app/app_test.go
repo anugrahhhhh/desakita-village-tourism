@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"desakita/internal/app"
 	"desakita/internal/platform/config"
 	"desakita/internal/platform/dbtest"
@@ -18,22 +20,34 @@ import (
 
 func newServer(t *testing.T) *httptest.Server {
 	t.Helper()
+	srv, _ := newApp(t)
+	return srv
+}
+
+// newApp starts the full application on a fresh database and temp upload dir.
+func newApp(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
+	t.Helper()
+	uploads := t.TempDir()
 	cfg, err := config.Load(func(k string) string {
-		if k == "DATABASE_URL" {
+		switch k {
+		case "DATABASE_URL":
 			return "unused"
+		case "UPLOAD_DIR":
+			return uploads
 		}
 		return ""
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	h, err := app.New(app.Options{Config: cfg, Pool: dbtest.New(t), Logger: slog.New(slog.DiscardHandler)})
+	pool := dbtest.New(t)
+	h, err := app.New(app.Options{Config: cfg, Pool: pool, Logger: slog.New(slog.DiscardHandler)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
-	return srv
+	return srv, pool
 }
 
 type client struct {

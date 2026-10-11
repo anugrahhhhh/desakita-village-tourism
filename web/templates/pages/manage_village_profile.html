@@ -1,0 +1,12 @@
+{{define "title"}}{{t "manage.village.profile"}}{{end}}
+{{define "content"}}
+<div class="mx-auto max-w-2xl">
+  {{template "manage_nav" .Data.Village}}
+  <h1 class="mb-6 text-2xl font-bold">{{t "manage.village.profile"}}</h1>
+  <form method="post" action="/kelola/desa/{{.Data.Village.ID}}/profil" class="card space-y-5" novalidate>
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    {{template "village_fields" .Data}}
+    <button type="submit" class="btn-primary w-full sm:w-auto">{{t "action.save"}}</button>
+  </form>
+</div>
+{{end}}

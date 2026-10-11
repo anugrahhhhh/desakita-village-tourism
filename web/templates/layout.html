@@ -13,6 +13,7 @@
       <a href="/" class="text-xl font-bold text-brand-700">{{t "app.name"}}</a>
       <div class="flex items-center gap-4 text-sm">
         {{if .Viewer}}
+          <a href="/kelola" class="btn-link">{{t "nav.manage"}}</a>
           <a href="/akun" class="btn-link">{{t "nav.account"}}</a>
           <form method="post" action="/keluar">
             <input type="hidden" name="csrf_token" value="{{.CSRF}}">

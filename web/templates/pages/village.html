@@ -1,0 +1,44 @@
+{{define "title"}}{{.Data.Village.Name}}{{end}}
+{{define "content"}}
+{{$v := .Data.Village}}
+{{if .Data.Preview}}<div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">{{t "village.preview"}}</div>{{end}}
+<article>
+  <header class="mb-6">
+    <h1 class="text-3xl font-bold text-brand-900">{{$v.Name}}</h1>
+    <p class="mt-1 text-stone-700">{{$v.DistrictName}}, {{$v.RegencyName}}</p>
+  </header>
+  {{with .Data.Photos}}
+    <ul class="mb-6 flex snap-x gap-3 overflow-x-auto pb-2">
+      {{range .}}<li class="w-72 shrink-0 snap-start sm:w-96"><img src="/media/{{.Path}}" alt="" class="aspect-[4/3] w-full rounded-xl object-cover" loading="lazy"></li>{{end}}
+    </ul>
+  {{end}}
+  <div class="grid gap-8 lg:grid-cols-3">
+    <div class="lg:col-span-2">
+      {{with $v.Description}}<p class="whitespace-pre-line text-lg leading-relaxed text-stone-800">{{.}}</p>{{end}}
+
+      <h2 class="mb-4 mt-8 text-2xl font-bold">{{t "village.packages"}}</h2>
+      <ul class="grid gap-4 sm:grid-cols-2">
+        {{range .Data.Packages}}
+          <li>
+            <a href="/desa/{{$v.Slug}}/paket/{{.ID}}" class="card block overflow-hidden p-0 hover:border-brand-600">
+              {{if .CoverPath}}<img src="/media/{{.CoverPath}}" alt="" class="aspect-[4/3] w-full object-cover" loading="lazy">{{end}}
+              <div class="p-4">
+                <h3 class="font-semibold">{{.Name}}</h3>
+                <p class="text-stone-700">{{rupiah .PricePerPersonIDR}} {{t "package.per_person"}} · {{template "duration" .}}</p>
+              </div>
+            </a>
+          </li>
+        {{else}}
+          <li class="text-stone-700">{{t "village.no_packages"}}</li>
+        {{end}}
+      </ul>
+    </div>
+    <aside class="card h-fit space-y-2">
+      <h2 class="text-lg font-bold">{{t "village.contact"}}</h2>
+      {{with $v.Address}}<p>{{.}}</p>{{end}}
+      <p>{{t "village.field.contact_phone"}}: <a href="tel:{{$v.ContactPhone}}" class="btn-link">{{$v.ContactPhone}}</a></p>
+      {{with $v.ContactWhatsApp}}<p>{{t "village.field.contact_whatsapp"}}: {{.}}</p>{{end}}
+    </aside>
+  </div>
+</article>
+{{end}}

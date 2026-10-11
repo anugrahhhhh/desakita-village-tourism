@@ -1,0 +1,109 @@
+{{/* Shared pieces for the manager dashboard and package listings. */}}
+
+{{define "duration"}}{{if .DurationNights}}{{t "package.duration" .DurationDays .DurationNights}}{{else}}{{t "package.duration_days" .DurationDays}}{{end}}{{end}}
+
+{{define "status_badge"}}
+  {{- if eq . "verified"}}<span class="rounded-full bg-brand-100 px-3 py-1 text-sm font-semibold text-brand-900">{{t "village.status.verified"}}</span>
+  {{- else if eq . "pending"}}<span class="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900">{{t "village.status.pending"}}</span>
+  {{- else if eq . "rejected"}}<span class="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-900">{{t "village.status.rejected"}}</span>
+  {{- else}}<span class="rounded-full bg-stone-200 px-3 py-1 text-sm font-semibold text-stone-800">{{t "village.status.suspended"}}</span>{{end}}
+{{- end}}
+
+{{define "status_banner"}}{{/* . is a village.Village */}}
+  {{if eq .Status "pending"}}
+    <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">{{t "village.banner.pending"}}</div>
+  {{else if eq .Status "rejected"}}
+    <div class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-900">
+      <p class="font-semibold">{{t "village.banner.rejected"}}</p>
+      {{with .ReviewNote}}<p class="mt-1">{{t "village.banner.reason"}}: {{.}}</p>{{end}}
+    </div>
+  {{else if eq .Status "suspended"}}
+    <div class="mb-6 rounded-lg border border-stone-300 bg-stone-100 px-4 py-3 text-stone-900">{{t "village.banner.suspended"}}</div>
+  {{end}}
+{{end}}
+
+{{define "manage_nav"}}{{/* . is a village.Village */}}
+  <nav class="mb-6 flex flex-wrap gap-2 text-sm" aria-label="{{t "manage.nav.label"}}">
+    <a href="/kelola" class="btn-link">{{t "manage.nav.all_villages"}}</a>
+    <span aria-hidden="true">›</span>
+    <a href="/kelola/desa/{{.ID}}" class="btn-link">{{.Name}}</a>
+  </nav>
+{{end}}
+
+{{define "village_fields"}}{{/* . is village.profileData */}}
+  <div>
+    <label for="name" class="field-label">{{t "village.field.name"}}</label>
+    <input id="name" name="name" required maxlength="120" class="field-input" value="{{.Values.Name}}">
+    {{with index .Errors "name"}}<p class="field-error">{{t .}}</p>{{end}}
+  </div>
+  <div>
+    <label for="district_id" class="field-label">{{t "village.field.district"}}</label>
+    <select id="district_id" name="district_id" required class="field-input">
+      <option value="">{{t "village.field.district_choose"}}</option>
+      {{$sel := .Values.DistrictID}}
+      {{range .Districts}}
+        <option value="{{.ID}}" {{if eq (printf "%d" .ID) $sel}}selected{{end}}>{{.DistrictName}} — {{.RegencyName}}, {{.Province}}</option>
+      {{end}}
+    </select>
+    {{with index .Errors "district_id"}}<p class="field-error">{{t .}}</p>{{end}}
+  </div>
+  <div>
+    <label for="address" class="field-label">{{t "village.field.address"}}</label>
+    <input id="address" name="address" maxlength="300" class="field-input" value="{{.Values.Address}}">
+    {{with index .Errors "address"}}<p class="field-error">{{t .}}</p>{{end}}
+  </div>
+  <div>
+    <label for="description" class="field-label">{{t "village.field.description"}}</label>
+    <textarea id="description" name="description" rows="6" maxlength="5000" class="field-input py-2">{{.Values.Description}}</textarea>
+    <p class="mt-1 text-sm text-stone-600">{{t "village.field.description_hint"}}</p>
+    {{with index .Errors "description"}}<p class="field-error">{{t .}}</p>{{end}}
+  </div>
+  <div class="grid gap-5 sm:grid-cols-2">
+    <div>
+      <label for="contact_phone" class="field-label">{{t "village.field.contact_phone"}}</label>
+      <input id="contact_phone" name="contact_phone" type="tel" required class="field-input" value="{{.Values.ContactPhone}}">
+      {{with index .Errors "contact_phone"}}<p class="field-error">{{t .}}</p>{{end}}
+    </div>
+    <div>
+      <label for="contact_whatsapp" class="field-label">{{t "village.field.contact_whatsapp"}}</label>
+      <input id="contact_whatsapp" name="contact_whatsapp" type="tel" class="field-input" value="{{.Values.ContactWhatsApp}}">
+      {{with index .Errors "contact_whatsapp"}}<p class="field-error">{{t .}}</p>{{end}}
+    </div>
+  </div>
+{{end}}
+
+{{define "photo_manager"}}{{/* . is the root View; .Data has Photos, Max, ErrorKey, Action, DeleteBase */}}
+  {{$csrf := .CSRF}}{{$d := .Data}}
+  {{with $d.ErrorKey}}<p role="alert" class="mb-4 rounded-lg bg-red-50 px-3 py-2 text-red-800">{{t .}}</p>{{end}}
+  {{if lt (len $d.Photos) $d.Max}}
+    <form method="post" action="{{$d.Action}}" enctype="multipart/form-data" class="card mb-6 space-y-4">
+      <input type="hidden" name="csrf_token" value="{{$csrf}}">
+      <div>
+        <label for="photo" class="field-label">{{t "photo.field.file"}}</label>
+        <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required class="block w-full text-base">
+        <p class="mt-1 text-sm text-stone-600">{{t "photo.field.hint"}}</p>
+      </div>
+      <label class="flex items-start gap-3">
+        <input type="checkbox" name="consent" value="1" required class="mt-1 size-5">
+        <span>{{t "photo.field.consent"}}</span>
+      </label>
+      <button type="submit" class="btn-primary">{{t "photo.upload"}}</button>
+    </form>
+  {{else}}
+    <p class="mb-6 rounded-lg bg-stone-100 px-3 py-2">{{t "photo.limit"}}</p>
+  {{end}}
+  <p class="mb-3 text-sm text-stone-600">{{t "photo.count" (len $d.Photos) $d.Max}}</p>
+  <ul class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+    {{range $d.Photos}}
+      <li class="card p-2">
+        <img src="/media/{{.Path}}" alt="" class="aspect-[4/3] w-full rounded-lg object-cover" loading="lazy">
+        <form method="post" action="{{$d.DeleteBase}}/{{.ID}}/hapus" class="mt-2">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <button type="submit" class="btn-link text-red-800">{{t "photo.delete"}}</button>
+        </form>
+      </li>
+    {{else}}
+      <li class="col-span-full text-stone-600">{{t "photo.empty"}}</li>
+    {{end}}
+  </ul>
+{{end}}

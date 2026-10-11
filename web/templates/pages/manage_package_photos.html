@@ -1,0 +1,9 @@
+{{define "title"}}{{t "manage.village.photos"}} · {{.Data.Package.Name}}{{end}}
+{{define "content"}}
+<div class="mx-auto max-w-3xl">
+  {{template "manage_nav" .Data.Village}}
+  <h1 class="mb-1 text-2xl font-bold">{{t "manage.village.photos"}}</h1>
+  <p class="mb-6 text-stone-700">{{.Data.Package.Name}} · <a href="/kelola/desa/{{.Data.Village.ID}}/paket" class="btn-link">{{t "package.back_to_list"}}</a></p>
+  {{template "photo_manager" .}}
+</div>
+{{end}}

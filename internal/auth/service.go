@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
-	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -16,6 +15,7 @@ import (
 
 	"desakita/internal/db"
 	"desakita/internal/platform/form"
+	"desakita/internal/platform/phone"
 )
 
 var (
@@ -60,8 +60,6 @@ type RegisterInput struct {
 	Name, Email, Password, Phone string
 }
 
-var phonePattern = regexp.MustCompile(`^\+?[0-9][0-9 \-]{6,18}[0-9]$`)
-
 func (in *RegisterInput) normalize() {
 	in.Name = strings.TrimSpace(in.Name)
 	in.Email = strings.TrimSpace(in.Email)
@@ -89,7 +87,7 @@ func (in RegisterInput) validate() form.Errors {
 	if n := utf8.RuneCountInString(in.Password); n < 8 || n > 128 {
 		errs.Add("password", "validation.password_length")
 	}
-	if in.Phone != "" && !phonePattern.MatchString(in.Phone) {
+	if in.Phone != "" && !phone.Valid(in.Phone) {
 		errs.Add("phone", "validation.phone")
 	}
 	return errs

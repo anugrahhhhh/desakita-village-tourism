@@ -1,0 +1,28 @@
+{{define "title"}}{{.Data.Village.Name}}{{end}}
+{{define "content"}}
+{{$v := .Data.Village}}
+{{template "manage_nav" $v}}
+<div class="mb-6 flex flex-wrap items-center gap-3">
+  <h1 class="text-2xl font-bold">{{$v.Name}}</h1>
+  {{template "status_badge" $v.Status}}
+</div>
+{{template "status_banner" $v}}
+<div class="grid gap-4 sm:grid-cols-2">
+  <a href="/kelola/desa/{{$v.ID}}/paket" class="card hover:border-brand-600">
+    <h2 class="text-lg font-semibold">{{t "manage.village.packages"}}</h2>
+    <p class="mt-1 text-stone-700">{{t "manage.village.packages_hint"}}</p>
+  </a>
+  <a href="/kelola/desa/{{$v.ID}}/profil" class="card hover:border-brand-600">
+    <h2 class="text-lg font-semibold">{{t "manage.village.profile"}}</h2>
+    <p class="mt-1 text-stone-700">{{t "manage.village.profile_hint"}}</p>
+  </a>
+  <a href="/kelola/desa/{{$v.ID}}/foto" class="card hover:border-brand-600">
+    <h2 class="text-lg font-semibold">{{t "manage.village.photos"}}</h2>
+    <p class="mt-1 text-stone-700">{{t "manage.village.photos_hint"}}</p>
+  </a>
+  <a href="/desa/{{$v.Slug}}" class="card hover:border-brand-600">
+    <h2 class="text-lg font-semibold">{{t "manage.village.public_page"}}</h2>
+    <p class="mt-1 text-stone-700">{{t "manage.village.public_page_hint"}}</p>
+  </a>
+</div>
+{{end}}

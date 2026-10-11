@@ -19,11 +19,17 @@ import (
 	"desakita/internal/platform/i18n"
 	"desakita/internal/platform/render"
 	"desakita/internal/platform/session"
+	"desakita/internal/platform/upload"
+	"desakita/internal/tourpackage"
+	"desakita/internal/village"
 	"desakita/web"
 )
 
-// formBodyLimit caps ordinary (non-upload) request bodies.
-const formBodyLimit = 1 << 20
+// Request body caps: ordinary forms, and multipart photo uploads (5 MiB file + form overhead).
+const (
+	formBodyLimit      = 1 << 20
+	multipartBodyLimit = 6 << 20
+)
 
 type Options struct {
 	Config config.Config
@@ -49,6 +55,15 @@ func New(opts Options) (http.Handler, error) {
 	}
 	authH := auth.NewHandler(authSvc, sm, rd)
 
+	store, err := upload.NewLocalStore(opts.Config.UploadDir)
+	if err != nil {
+		return nil, err
+	}
+	villageSvc := village.NewService(opts.Pool, store, opts.Logger)
+	packageSvc := tourpackage.NewService(opts.Pool, villageSvc, store, opts.Logger)
+	villageH := village.NewHandler(villageSvc, packageSvc, sm, rd)
+	packageH := tourpackage.NewHandler(packageSvc, sm, rd)
+
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer)
 	r.NotFound(rd.NotFound)
@@ -58,6 +73,7 @@ func New(opts Options) (http.Handler, error) {
 		w.Header().Set("Cache-Control", "public, max-age=3600")
 		static.ServeHTTP(w, r)
 	}))
+	r.Get("/media/{name}", upload.ServeHandler(store))
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
@@ -71,14 +87,26 @@ func New(opts Options) (http.Handler, error) {
 	// Everything below uses sessions, CSRF and the current viewer.
 	r.Group(func(r chi.Router) {
 		r.Use(sm.LoadAndSave)
-		r.Use(httpx.BodyLimit(formBodyLimit))
-		r.Use(csrf.Protect(sm, http.HandlerFunc(rd.Forbidden)))
+		r.Use(httpx.BodyLimit(formBodyLimit, multipartBodyLimit))
+		r.Use(csrf.Protect(sm, http.HandlerFunc(rd.Forbidden), http.HandlerFunc(rd.TooLarge)))
 		r.Use(authH.LoadViewer)
 
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			rd.Page(w, r, http.StatusOK, "home", nil)
 		})
 		authH.Routes(r)
+		villageH.PublicRoutes(r)
+		packageH.PublicRoutes(r)
+
+		r.Route("/kelola", func(r chi.Router) {
+			r.Use(httpx.RequireLogin)
+			villageH.DashboardRoutes(r)
+			r.Route("/desa/{villageID}", func(r chi.Router) {
+				r.Use(villageH.RequireManager)
+				villageH.ManageRoutes(r)
+				r.Route("/paket", packageH.ManageRoutes)
+			})
+		})
 	})
 	return r, nil
 }

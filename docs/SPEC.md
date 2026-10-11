@@ -82,7 +82,7 @@ platform ← booking
 village ← admin
 ```
 
-- `booking/` tidak mengimpor `tourpackage/` maupun `village/`. Modul ini mendefinisikan interface kecilnya sendiri, `PackageLookup` dan `VillageAccess`, dan `cmd/` yang merangkai adapternya.
+- `booking/` tidak mengimpor `tourpackage/` maupun `village/`. Modul ini mendefinisikan interface kecilnya sendiri, `PackageLookup` dan `VillageAccess`, dan `internal/app` yang merangkai adapternya.
 - Semua logika kuota dan tesnya berada di `booking/`.
 
 ## 3. Model data

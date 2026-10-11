@@ -82,12 +82,21 @@ func RequireLogin(next http.Handler) http.Handler {
 	})
 }
 
-// BodyLimit caps request bodies at n bytes.
-func BodyLimit(n int64) func(http.Handler) http.Handler {
+// BodyLimit caps request bodies: multipart (photo upload) bodies at multipartLimit,
+// everything else at formLimit.
+func BodyLimit(formLimit, multipartLimit int64) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			n := formLimit
+			if IsMultipart(r) {
+				n = multipartLimit
+			}
 			r.Body = http.MaxBytesReader(w, r.Body, n)
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func IsMultipart(r *http.Request) bool {
+	return strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data")
 }
