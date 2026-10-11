@@ -1,0 +1,14 @@
+{
+  "name": "desakita-assets",
+  "private": true,
+  "scripts": {
+    "build:css": "node -e \"require('fs').mkdirSync('web/static',{recursive:true})\" && tailwindcss -i web/assets/app.css -o web/static/app.css --minify",
+    "watch:css": "tailwindcss -i web/assets/app.css -o web/static/app.css --watch",
+    "vendor:htmx": "node -e \"require('fs').copyFileSync('node_modules/htmx.org/dist/htmx.min.js','web/static/htmx.min.js')\""
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.1.11",
+    "htmx.org": "2.0.4",
+    "tailwindcss": "4.1.11"
+  }
+}

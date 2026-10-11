@@ -1,0 +1,21 @@
+{{define "title"}}{{t "auth.login.title"}}{{end}}
+{{define "content"}}
+<div class="mx-auto max-w-md">
+  <h1 class="mb-6 text-2xl font-bold">{{t "auth.login.title"}}</h1>
+  <form method="post" action="/masuk" class="card space-y-5" novalidate>
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="next" value="{{.Data.Next}}">
+    {{with .Data.ErrorKey}}<p role="alert" class="rounded-lg bg-red-50 px-3 py-2 text-red-800">{{t .}}</p>{{end}}
+    <div>
+      <label for="email" class="field-label">{{t "field.email"}}</label>
+      <input id="email" name="email" type="email" autocomplete="email" required class="field-input" value="{{index .Data.Values "email"}}">
+    </div>
+    <div>
+      <label for="password" class="field-label">{{t "field.password"}}</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required class="field-input">
+    </div>
+    <button type="submit" class="btn-primary w-full">{{t "auth.login.submit"}}</button>
+    <p class="text-sm text-stone-700">{{t "auth.login.no_account"}} <a href="/daftar{{with .Data.Next}}?next={{.}}{{end}}" class="btn-link">{{t "nav.register"}}</a></p>
+  </form>
+</div>
+{{end}}

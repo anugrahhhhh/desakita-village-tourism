@@ -1,0 +1,40 @@
+{{define "base"}}<!doctype html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{block "title" .}}{{t "app.name"}}{{end}} · {{t "app.name"}}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body class="flex min-h-screen flex-col bg-stone-50 text-stone-900" hx-headers='{"X-CSRF-Token": "{{.CSRF}}"}'>
+  <header class="border-b border-stone-200 bg-white">
+    <nav class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
+      <a href="/" class="text-xl font-bold text-brand-700">{{t "app.name"}}</a>
+      <div class="flex items-center gap-4 text-sm">
+        {{if .Viewer}}
+          <a href="/akun" class="btn-link">{{t "nav.account"}}</a>
+          <form method="post" action="/keluar">
+            <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+            <button type="submit" class="btn-link">{{t "nav.logout"}}</button>
+          </form>
+        {{else}}
+          <a href="/masuk" class="btn-link">{{t "nav.login"}}</a>
+          <a href="/daftar" class="btn-primary min-h-10 px-4 text-sm">{{t "nav.register"}}</a>
+        {{end}}
+      </div>
+    </nav>
+  </header>
+
+  <main class="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
+    {{with .Flash}}
+      <div role="status" class="mb-6 rounded-lg border border-brand-100 bg-brand-50 px-4 py-3 text-brand-900">{{t .}}</div>
+    {{end}}
+    {{block "content" .}}{{end}}
+  </main>
+
+  <footer class="border-t border-stone-200 bg-white">
+    <p class="mx-auto max-w-5xl px-4 py-4 text-sm text-stone-600">{{t "app.tagline"}}</p>
+  </footer>
+</body>
+</html>{{end}}

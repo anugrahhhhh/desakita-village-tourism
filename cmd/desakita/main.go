@@ -19,11 +19,9 @@ import (
 	"time"
 	_ "time/tzdata" // Asia/Jakarta must resolve even in minimal container images.
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
+	"desakita/internal/app"
 	"desakita/internal/platform/config"
 	"desakita/internal/platform/database"
 )
@@ -98,9 +96,14 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	}
 	defer pool.Close()
 
+	handler, err := app.New(app.Options{Config: cfg, Pool: pool, Logger: logger, SessionCleanup: 30 * time.Minute})
+	if err != nil {
+		return err
+	}
+
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           routes(pool),
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,
@@ -123,24 +126,4 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	return srv.Shutdown(shutdownCtx)
-}
-
-func routes(pool *pgxpool.Pool) http.Handler {
-	r := chi.NewRouter()
-	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer)
-
-	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-		defer cancel()
-		if err := pool.Ping(ctx); err != nil {
-			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
-			return
-		}
-		w.Write([]byte("ok")) //nolint:errcheck
-	})
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Write([]byte("DesaKita — dalam pengembangan")) //nolint:errcheck
-	})
-	return r
 }

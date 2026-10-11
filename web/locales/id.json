@@ -1,0 +1,56 @@
+{
+  "app.name": "DesaKita",
+  "app.tagline": "Desa wisata yang dikelola warga, mudah ditemukan dan dipesan.",
+
+  "nav.account": "Akun saya",
+  "nav.login": "Masuk",
+  "nav.logout": "Keluar",
+  "nav.register": "Daftar",
+
+  "home.heading": "Temukan desa wisata yang dikelola warga",
+  "home.lead": "Bandingkan paket kegiatan, lihat tanggal yang tersedia, dan kirim permintaan pemesanan langsung ke pengelola desa.",
+
+  "field.name": "Nama",
+  "field.email": "Email",
+  "field.password": "Kata sandi",
+  "field.phone_optional": "Nomor HP (opsional)",
+
+  "auth.login.title": "Masuk",
+  "auth.login.submit": "Masuk",
+  "auth.login.no_account": "Belum punya akun?",
+  "auth.login.invalid": "Email atau kata sandi salah.",
+  "auth.register.title": "Daftar akun",
+  "auth.register.submit": "Buat akun",
+  "auth.register.has_account": "Sudah punya akun?",
+  "auth.register.phone_hint": "Dipakai untuk mengisi otomatis form pemesanan.",
+  "auth.register.password_hint": "Minimal 8 karakter.",
+  "auth.email_taken": "Email ini sudah terdaftar.",
+
+  "flash.registered": "Akun berhasil dibuat. Selamat datang!",
+  "flash.logged_in": "Anda berhasil masuk.",
+  "flash.logged_out": "Anda sudah keluar.",
+  "flash.account_deleted": "Akun Anda sudah dihapus.",
+
+  "account.title": "Akun saya",
+  "account.delete.heading": "Hapus akun",
+  "account.delete.explain": "Data pribadi Anda dihapus. Riwayat pemesanan tetap disimpan desa tanpa nama, nomor HP, dan catatan Anda. Tindakan ini tidak bisa dibatalkan.",
+  "account.delete.password": "Ketik kata sandi untuk konfirmasi",
+  "account.delete.submit": "Hapus akun saya",
+  "account.delete.wrong_password": "Kata sandi salah.",
+  "account.delete.last_manager": "Anda adalah pengelola terakhir sebuah desa. Tambahkan pengelola lain atau hubungi admin sebelum menghapus akun.",
+
+  "validation.required": "Wajib diisi.",
+  "validation.too_long": "Terlalu panjang.",
+  "validation.email": "Format email tidak valid.",
+  "validation.password_length": "Kata sandi harus 8 sampai 128 karakter.",
+  "validation.phone": "Nomor HP tidak valid.",
+
+  "error.not_found.title": "Halaman tidak ditemukan",
+  "error.not_found.message": "Halaman yang Anda cari tidak ada atau sudah dipindahkan.",
+  "error.forbidden.title": "Permintaan ditolak",
+  "error.forbidden.message": "Sesi formulir sudah kedaluwarsa. Muat ulang halaman lalu coba lagi.",
+  "error.server.title": "Terjadi kesalahan",
+  "error.server.message": "Maaf, ada masalah di server kami. Silakan coba lagi sebentar lagi.",
+  "error.request_id": "Kode permintaan",
+  "error.back_home": "Kembali ke beranda"
+}

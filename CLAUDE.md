@@ -11,23 +11,33 @@ go run ./cmd/desakita migrate down 1 # roll back one
 go run ./cmd/desakita seed           # idempotent dev seed (placeholder regions only)
 go run ./cmd/desakita serve          # http://localhost:8080, /healthz pings the DB
 sqlc generate                        # after editing queries/ or migrations/ (sqlc v1.29.0)
+npm install && npm run build:css     # rebuild web/static/app.css after template/class changes (output is committed)
+npm run vendor:htmx                  # copy pinned htmx into web/static (committed)
 go test ./...                        # needs TEST_DATABASE_URL (user with CREATEDB)
 docker compose up --build            # app + PostgreSQL 16 (DB on host port 5433)
 ```
 
 Local dev on this machine uses Laragon's PostgreSQL 14 on localhost:5432 (user `postgres`, no password). SQL must stay compatible with PostgreSQL ≥ 14.
 
-Windows Application Control blocks `-race` test binaries for DB packages here. Run `go test -race ./...` in WSL or CI instead.
+Windows Application Control blocks some Go test binaries here, unpredictably (e.g. `csrf.test.exe`, and any `-race` build). Run the suite in WSL instead. WSL uses mirrored networking, so localhost:5432 reaches Laragon:
+
+```sh
+wsl.exe -d Ubuntu -- bash -lc 'cd "/mnt/c/Users/ASUS/project golang 2" && TEST_DATABASE_URL="postgres://postgres@localhost:5432/postgres?sslmode=disable" go test ./...'
+```
+
+`-race` additionally needs gcc in WSL (`sudo apt install build-essential`), which is not installed yet.
 
 ## Layout and rules
 
 - Modules live in `internal/<domain>/` (`auth`, `village`, `tourpackage`, `booking`, `admin`), each with handler → service → store. Shared plumbing goes in `internal/platform/`. sqlc output goes in `internal/db/` (generated, never edit).
 - Dependencies point one way: `platform ← auth ← village ← tourpackage`, `platform ← booking`, `village ← admin`.
-  - `booking` never imports `tourpackage` or `village`. It declares small interfaces (`PackageLookup`, `VillageAccess`), and `cmd/desakita` wires the adapters.
+  - `booking` never imports `tourpackage` or `village`. It declares small interfaces (`PackageLookup`, `VillageAccess`), and `internal/app` wires the adapters.
 - All quota logic and its concurrency tests stay in `internal/booking/`. Quota changes are conditional `UPDATE … RETURNING` inside one transaction. Status transitions are `UPDATE … WHERE status IN (…)`. See SPEC §4.
 - Every booking action checks ownership of that booking (traveler_id, or village_id ∈ the manager's villages). Unauthorized access returns 404.
 - Money is `bigint` rupiah. Times are `timestamptz` (DB sessions run in UTC). Business dates use `Asia/Jakarta`.
 - Migrations are append-only once committed. Add a new numbered pair instead of editing `000001`.
+- `internal/app` is the composition root: the only package importing every module. Routes in its session group get a 1 MiB body limit before CSRF. Upload routes need their own group with a larger limit.
+- Every UI string goes through `{{t "key"}}` / i18n keys in `web/locales/id.json`. `web/i18n_test.go` fails on missing keys, and pages render missing keys as `⟦key⟧`.
 - Integration tests use `dbtest.New(t)`, which gives a fresh database cloned from a migrated template. Never point tests at the dev database.
 - Code, identifiers and comments are in English. UI text goes through i18n (Indonesian only for now). Docs are in Indonesian.
 - Never log passwords, booking notes or phone numbers.
