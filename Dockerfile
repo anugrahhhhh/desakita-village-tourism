@@ -12,15 +12,16 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
 FROM alpine:3.22
 RUN apk add --no-cache ca-certificates \
  && addgroup -S -g 10001 app && adduser -S -D -H -u 10001 -G app app \
- && mkdir -p /data/uploads /data/mail && chown app:app /data/uploads /data/mail
+ && mkdir -p /data/uploads /data/mail /data/tiles && chown app:app /data/uploads /data/mail /data/tiles
 COPY --from=build /out/desakita /usr/local/bin/desakita
 USER 10001:10001
 ENV APP_ENV=production \
     HTTP_ADDR=:8080 \
     UPLOAD_DIR=/data/uploads \
     MAIL_DIR=/data/mail \
+    MAP_TILE_DIR=/data/tiles \
     LOG_LEVEL=info
-VOLUME ["/data/uploads", "/data/mail"]
+VOLUME ["/data/uploads", "/data/mail", "/data/tiles"]
 EXPOSE 8080
 # Liveness only; orchestrators should use /readyz for traffic routing.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \

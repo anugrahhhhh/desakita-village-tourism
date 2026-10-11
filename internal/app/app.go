@@ -27,6 +27,7 @@ import (
 	"desakita/internal/platform/ratelimit"
 	"desakita/internal/platform/render"
 	"desakita/internal/platform/session"
+	"desakita/internal/platform/tiles"
 	"desakita/internal/platform/upload"
 	"desakita/internal/review"
 	"desakita/internal/tourpackage"
@@ -99,6 +100,10 @@ func New(opts Options) (*App, error) {
 		return nil, err
 	}
 	rd.SetLocation(opts.Config.Location)
+	rd.SetMap(render.MapConfig{
+		Tiles: "/tiles/{z}/{x}/{y}.png", MaxZoom: tiles.MaxZoom,
+		AttributionText: opts.Config.Map.AttributionText, AttributionURL: opts.Config.Map.AttributionURL,
+	})
 	authSvc, err := auth.NewService(opts.Pool)
 	if err != nil {
 		return nil, err
@@ -158,6 +163,12 @@ func New(opts Options) (*App, error) {
 	adminH.ReportLimit = ratelimit.New(time.Hour/5, 5).Middleware(user, tooMany)
 	reviewH.CreateLimit = ratelimit.New(time.Hour/5, 5).Middleware(user, tooMany)
 
+	// Map tiles (SPEC §14): cached tiles are free; upstream fetches are limited per IP so the
+	// proxy cannot be used to scrape the upstream.
+	tileSrv := tiles.New(opts.Config.Map.TileDir, opts.Config.Map.TileUpstream, "DesaKita/1.0 (+"+opts.Config.BaseURL+")", opts.Logger)
+	tileMisses := ratelimit.New(time.Second/2, 300)
+	tileSrv.MissAllowed = func(r *http.Request) bool { return tileMisses.Allow(ip(r)) }
+
 	r := chi.NewRouter()
 	r.Use(
 		middleware.RequestID,
@@ -175,6 +186,7 @@ func New(opts Options) (*App, error) {
 		static.ServeHTTP(w, r)
 	}))
 	r.Get("/media/{name}", upload.ServeHandler(store))
+	r.Get("/tiles/{z}/{x}/{y}", tileSrv.ServeHTTP)
 	// Liveness: the process is up and serving. Never touches dependencies, so a database
 	// outage doesn't make the orchestrator restart healthy app containers.
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {

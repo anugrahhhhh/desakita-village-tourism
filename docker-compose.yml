@@ -31,9 +31,11 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_TLS: ${SMTP_TLS:-starttls}
+      MAP_TILE_URL: ${MAP_TILE_URL:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}
     volumes:
       - uploads:/data/uploads
       - mail:/data/mail
+      - tiles:/data/tiles
     ports:
       - "127.0.0.1:8080:8080"
     read_only: true
@@ -50,3 +52,4 @@ volumes:
   pgdata:
   uploads:
   mail:
+  tiles:

@@ -14,6 +14,7 @@
     "@playwright/test": "1.64.0",
     "@tailwindcss/cli": "4.1.11",
     "htmx.org": "2.0.4",
+    "leaflet": "1.9.4",
     "lucide-static": "0.469.0",
     "tailwindcss": "4.1.11"
   }

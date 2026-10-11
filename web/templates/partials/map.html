@@ -1,0 +1,28 @@
+{{/* Map helpers (SPEC §14). Leaflet and map.js load only on pages that define "head" with map_head. */}}
+{{define "map_head"}}
+  <link rel="stylesheet" href="/static/leaflet/leaflet.css">
+  <script src="/static/leaflet/leaflet.js" defer></script>
+  <script src="/static/map.js" defer></script>
+{{end}}
+
+{{/* Shared data attributes for every [data-map] element. */}}
+{{define "map_attrs"}}{{$m := mapConfig}} data-tiles="{{$m.Tiles}}" data-max-zoom="{{$m.MaxZoom}}" data-attribution="{{or $m.AttributionText (t "map.attribution")}}" data-attribution-url="{{$m.AttributionURL}}" data-zoom-in="{{t "map.zoom_in"}}" data-zoom-out="{{t "map.zoom_out"}}" data-open-label="{{t "map.open_village"}}"{{end}}
+
+{{define "map_location_fields"}}{{/* . is village.profileData */}}
+  <fieldset class="space-y-3">
+    <legend class="field-label">{{t "village.field.location"}}</legend>
+    <p id="location-hint" class="text-sm text-stone-600">{{t "village.field.location_hint"}}</p>
+    <div class="hidden h-72 overflow-hidden rounded-xl border border-stone-300" data-map="picker" data-lat-input="lat" data-lng-input="lng" role="region" aria-label="{{t "map.picker_label"}}"{{template "map_attrs"}}></div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label for="lat" class="field-label">{{t "village.field.lat"}}</label>
+        <input id="lat" name="lat" inputmode="decimal" autocomplete="off" maxlength="20" class="field-input" value="{{.Values.Lat}}" placeholder="-7.797068" aria-describedby="location-hint">
+      </div>
+      <div>
+        <label for="lng" class="field-label">{{t "village.field.lng"}}</label>
+        <input id="lng" name="lng" inputmode="decimal" autocomplete="off" maxlength="20" class="field-input" value="{{.Values.Lng}}" placeholder="110.370529" aria-describedby="location-hint">
+      </div>
+    </div>
+    {{with index .Errors "location"}}<p class="field-error">{{t .}}</p>{{end}}
+  </fieldset>
+{{end}}

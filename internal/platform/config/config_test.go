@@ -81,3 +81,25 @@ func TestLoadMail(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadMap(t *testing.T) {
+	cfg, err := Load(env(map[string]string{"DATABASE_URL": "postgres://x"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Map.TileUpstream != "https://tile.openstreetmap.org/{z}/{x}/{y}.png" || cfg.Map.TileDir != "./data/tiles" {
+		t.Errorf("map defaults: %+v", cfg.Map)
+	}
+	cfg, err = Load(env(map[string]string{"DATABASE_URL": "postgres://x", "MAP_TILE_URL": "off"}))
+	if err != nil || cfg.Map.TileUpstream != "" {
+		t.Errorf("off: %q %v", cfg.Map.TileUpstream, err)
+	}
+	for _, bad := range []string{"tile.example.com/{z}/{x}/{y}.png", "https://tile.example.com/{z}/{x}.png", "ftp://x/{z}/{x}/{y}"} {
+		if _, err := Load(env(map[string]string{"DATABASE_URL": "postgres://x", "MAP_TILE_URL": bad})); err == nil || !strings.Contains(err.Error(), "MAP_TILE_URL") {
+			t.Errorf("%s: %v", bad, err)
+		}
+	}
+	if _, err := Load(env(map[string]string{"DATABASE_URL": "postgres://x", "MAP_ATTRIBUTION_URL": "javascript:alert(1)"})); err == nil {
+		t.Error("javascript: attribution URL accepted")
+	}
+}

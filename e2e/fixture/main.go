@@ -12,7 +12,9 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"image/png"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -85,8 +87,20 @@ func run() error {
 		return fmt.Errorf("seed demo: %w", err)
 	}
 
+	tileDir, err := os.MkdirTemp("", "desakita-e2e-tiles-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tileDir)
+	tileUpstream, err := fakeTileServer()
+	if err != nil {
+		return err
+	}
 	cfg, err := config.Load(func(k string) string {
-		return map[string]string{"DATABASE_URL": dbURL, "UPLOAD_DIR": uploads, "HTTP_ADDR": addr}[k]
+		return map[string]string{
+			"DATABASE_URL": dbURL, "UPLOAD_DIR": uploads, "HTTP_ADDR": addr,
+			"MAP_TILE_URL": tileUpstream, "MAP_TILE_DIR": tileDir,
+		}[k]
 	})
 	if err != nil {
 		return err
@@ -172,6 +186,8 @@ func seedDemo(ctx context.Context, pool *pgxpool.Pool, uploads string) error {
 		Description:     "Desa di kaki bukit dengan sawah terasering dan sanggar batik warga.",
 		ContactPhone:    "0812-1111-2222",
 		ContactWhatsApp: "0812-1111-2222",
+		Lat:             "-7.797068",
+		Lng:             "110.370529",
 	})
 	if err != nil {
 		return err
@@ -222,4 +238,29 @@ func seedDemo(ctx context.Context, pool *pgxpool.Pool, uploads string) error {
 		ContactPhone: "0812-5555-6666", Description: "Desa yang baru mendaftar.",
 	})
 	return err
+}
+
+// fakeTileServer stands in for OpenStreetMap so the E2E run never leaves the machine: every
+// tile is the same plain 256 px PNG. It returns the upstream URL template.
+func fakeTileServer() (string, error) {
+	img := image.NewRGBA(image.Rect(0, 0, 256, 256))
+	for y := 0; y < 256; y++ {
+		for x := 0; x < 256; x++ {
+			img.Set(x, y, color.RGBA{232, 226, 210, 255})
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return "", err
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", err
+	}
+	tile := buf.Bytes()
+	go http.Serve(ln, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { //nolint:errcheck
+		w.Header().Set("Content-Type", "image/png")
+		w.Write(tile) //nolint:errcheck
+	}))
+	return "http://" + ln.Addr().String() + "/{z}/{x}/{y}.png", nil
 }

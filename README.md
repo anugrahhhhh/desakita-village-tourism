@@ -67,6 +67,9 @@ docker compose up --build               # aplikasi di http://localhost:8080, Pos
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | — | kredensial SMTP (AUTH PLAIN, hanya lewat TLS) |
 | `SMTP_TLS` | `starttls` | `starttls` (wajib tersedia), `tls` (port 465), atau `none` (server lokal saja) |
 | `MAIL_DIR` | `./data/mail` | folder `.eml` untuk pengembangan (di Docker: `/data/mail`) |
+| `MAP_TILE_URL` | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | sumber ubin peta yang di-cache server; `off` = hanya ubin di `MAP_TILE_DIR` |
+| `MAP_TILE_DIR` | `./data/tiles` | cache ubin peta (di Docker: `/data/tiles`) |
+| `MAP_ATTRIBUTION`, `MAP_ATTRIBUTION_URL` | atribusi OpenStreetMap | wajib disesuaikan jika `MAP_TILE_URL` diganti |
 
 ## Pengujian
 
@@ -94,6 +97,7 @@ PW_CHANNEL=msedge npm run e2e           # Playwright: alur utama, axe-core WCAG 
 - **Log:** satu baris JSON per request (method, path tanpa query string, status, durasi, `request_id`). Isi form, kata sandi, catatan pemesanan, dan nomor HP tidak pernah dicatat.
 - **HTTPS:** pasang reverse proxy (Caddy, nginx, atau proxy platform), lalu set `APP_ENV=production` dan `TRUST_PROXY=true`.
 - **Email:** notifikasi masuk antrean `email_outbox` dalam transaksi yang sama dengan perubahannya, lalu dikirim oleh worker di dalam `serve` (lihat SPEC §13). Isi `SMTP_HOST` dan `APP_BASE_URL` di production.
+- **Peta:** ubin peta diambil server dari `MAP_TILE_URL` lalu di-cache di `MAP_TILE_DIR` (lihat SPEC §14). Server ubin OpenStreetMap hanya untuk trafik ringan, jadi gunakan penyedia ubin lain untuk trafik besar.
 - **Batasan:** rate limit disimpan di memori, jadi jalankan satu instance aplikasi.
 
 ## Backup dan restore

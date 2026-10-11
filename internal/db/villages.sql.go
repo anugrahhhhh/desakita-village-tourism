@@ -65,8 +65,8 @@ func (q *Queries) CountVillagesByStatus(ctx context.Context) ([]CountVillagesByS
 }
 
 const createVillage = `-- name: CreateVillage :one
-INSERT INTO villages (slug, name, description, district_id, address, contact_phone, contact_whatsapp)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO villages (slug, name, description, district_id, address, contact_phone, contact_whatsapp, lat, lng)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING id
 `
 
@@ -78,6 +78,8 @@ type CreateVillageParams struct {
 	Address         string
 	ContactPhone    string
 	ContactWhatsapp *string
+	Lat             *float64
+	Lng             *float64
 }
 
 func (q *Queries) CreateVillage(ctx context.Context, arg CreateVillageParams) (int64, error) {
@@ -89,6 +91,8 @@ func (q *Queries) CreateVillage(ctx context.Context, arg CreateVillageParams) (i
 		arg.Address,
 		arg.ContactPhone,
 		arg.ContactWhatsapp,
+		arg.Lat,
+		arg.Lng,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -315,6 +319,53 @@ func (q *Queries) ListDistricts(ctx context.Context) ([]ListDistrictsRow, error)
 			&i.DistrictName,
 			&i.RegencyName,
 			&i.ProvinceName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMappedVillages = `-- name: ListMappedVillages :many
+SELECT v.slug, v.name, v.lat, v.lng, d.name AS district_name, r.name AS regency_name
+FROM villages v
+JOIN regions d ON d.id = v.district_id
+JOIN regions r ON r.id = d.parent_id
+WHERE v.status = 'verified' AND v.lat IS NOT NULL
+ORDER BY v.name
+LIMIT 5000
+`
+
+type ListMappedVillagesRow struct {
+	Slug         string
+	Name         string
+	Lat          *float64
+	Lng          *float64
+	DistrictName string
+	RegencyName  string
+}
+
+// Verified villages with a location, for the public map (SPEC §14).
+func (q *Queries) ListMappedVillages(ctx context.Context) ([]ListMappedVillagesRow, error) {
+	rows, err := q.db.Query(ctx, listMappedVillages)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMappedVillagesRow
+	for rows.Next() {
+		var i ListMappedVillagesRow
+		if err := rows.Scan(
+			&i.Slug,
+			&i.Name,
+			&i.Lat,
+			&i.Lng,
+			&i.DistrictName,
+			&i.RegencyName,
 		); err != nil {
 			return nil, err
 		}
@@ -584,7 +635,7 @@ func (q *Queries) SetVillageStatus(ctx context.Context, arg SetVillageStatusPara
 const updateVillageProfile = `-- name: UpdateVillageProfile :execrows
 UPDATE villages
 SET name = $2, description = $3, district_id = $4, address = $5,
-    contact_phone = $6, contact_whatsapp = $7, updated_at = now()
+    contact_phone = $6, contact_whatsapp = $7, lat = $8, lng = $9, updated_at = now()
 WHERE id = $1
 `
 
@@ -596,6 +647,8 @@ type UpdateVillageProfileParams struct {
 	Address         string
 	ContactPhone    string
 	ContactWhatsapp *string
+	Lat             *float64
+	Lng             *float64
 }
 
 func (q *Queries) UpdateVillageProfile(ctx context.Context, arg UpdateVillageProfileParams) (int64, error) {
@@ -607,6 +660,8 @@ func (q *Queries) UpdateVillageProfile(ctx context.Context, arg UpdateVillagePro
 		arg.Address,
 		arg.ContactPhone,
 		arg.ContactWhatsapp,
+		arg.Lat,
+		arg.Lng,
 	)
 	if err != nil {
 		return 0, err

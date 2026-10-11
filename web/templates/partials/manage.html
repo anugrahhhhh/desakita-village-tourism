@@ -70,6 +70,7 @@
       {{with index .Errors "contact_whatsapp"}}<p class="field-error">{{t .}}</p>{{end}}
     </div>
   </div>
+  {{template "map_location_fields" .}}
 {{end}}
 
 {{define "photo_manager"}}{{/* . is the root View; .Data has Photos, Max, ErrorKey, Action, DeleteBase */}}

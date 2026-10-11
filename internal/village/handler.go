@@ -107,6 +107,7 @@ func (h *Handler) ManageRoutes(r chi.Router) {
 
 func (h *Handler) PublicRoutes(r chi.Router) {
 	r.Get("/desa/{slug}", h.publicPage)
+	r.Get("/peta", h.mapPage)
 }
 
 func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request) {
@@ -144,6 +145,8 @@ func profileFromForm(r *http.Request) ProfileInput {
 		Description:     r.PostFormValue("description"),
 		ContactPhone:    r.PostFormValue("contact_phone"),
 		ContactWhatsApp: r.PostFormValue("contact_whatsapp"),
+		Lat:             r.PostFormValue("lat"),
+		Lng:             r.PostFormValue("lng"),
 	}
 }
 
@@ -179,6 +182,7 @@ func (h *Handler) profileForm(w http.ResponseWriter, r *http.Request) {
 		Values: ProfileInput{
 			Name: v.Name, DistrictID: strconv.FormatInt(v.DistrictID, 10), Address: v.Address,
 			Description: v.Description, ContactPhone: v.ContactPhone, ContactWhatsApp: v.ContactWhatsApp,
+			Lat: formatCoord(v.Lat), Lng: formatCoord(v.Lng),
 		},
 	})
 }
@@ -297,4 +301,22 @@ func (h *Handler) publicPage(w http.ResponseWriter, r *http.Request) {
 	h.rd.Page(w, r, http.StatusOK, "village", map[string]any{
 		"Village": v, "Preview": preview, "Photos": photos, "Packages": packages,
 	})
+}
+
+func formatCoord(f *float64) string {
+	if f == nil {
+		return ""
+	}
+	return strconv.FormatFloat(*f, 'f', -1, 64)
+}
+
+// mapPage shows every verified village that has a location (SPEC §14). The list is the
+// content; the Leaflet map is drawn from it by map.js.
+func (h *Handler) mapPage(w http.ResponseWriter, r *http.Request) {
+	points, err := h.svc.Mapped(r.Context())
+	if err != nil {
+		h.rd.ServerError(w, r, err)
+		return
+	}
+	h.rd.Page(w, r, http.StatusOK, "map", map[string]any{"Points": points})
 }

@@ -10,6 +10,7 @@ import (
 	"math"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,8 +36,18 @@ type View struct {
 // zone holds the display time zone; templates read it through the "local" func.
 type zone struct{ loc *time.Location }
 
+// MapConfig is what map pages need to set up Leaflet (SPEC §14); templates read it
+// through the "mapConfig" func.
+type MapConfig struct {
+	Tiles           string // URL template served by this app, e.g. /tiles/{z}/{x}/{y}.png
+	MaxZoom         int
+	AttributionText string
+	AttributionURL  string
+}
+
 type Renderer struct {
 	zone   *zone
+	mapCfg *MapConfig
 	pages  map[string]*template.Template
 	tr     *i18n.Translator
 	sm     *scs.SessionManager
@@ -47,7 +58,16 @@ type Renderer struct {
 // A page named "pages/login.html" is rendered as "login".
 func New(fsys fs.FS, tr *i18n.Translator, sm *scs.SessionManager, logger *slog.Logger) (*Renderer, error) {
 	z := &zone{loc: time.UTC}
+	mc := &MapConfig{}
 	funcs := template.FuncMap{
+		"mapConfig": func() MapConfig { return *mc },
+		// coord formats a coordinate for a data attribute or input ("" when unset).
+		"coord": func(f *float64) string {
+			if f == nil {
+				return ""
+			}
+			return strconv.FormatFloat(*f, 'f', -1, 64)
+		},
 		"t": tr.T,
 		// stars returns five booleans: star i is filled when i < the rounded rating.
 		"stars": func(v any) []bool {
@@ -97,7 +117,7 @@ func New(fsys fs.FS, tr *i18n.Translator, sm *scs.SessionManager, logger *slog.L
 		}
 		pages[strings.TrimSuffix(path.Base(pf), ".html")] = tmpl
 	}
-	return &Renderer{zone: z, pages: pages, tr: tr, sm: sm, logger: logger}, nil
+	return &Renderer{zone: z, mapCfg: mc, pages: pages, tr: tr, sm: sm, logger: logger}, nil
 }
 
 // SetLocation sets the time zone used by the "local" template func. Call before serving.
@@ -106,6 +126,9 @@ func (rd *Renderer) SetLocation(loc *time.Location) {
 		rd.zone.loc = loc
 	}
 }
+
+// SetMap sets the configuration read by the "mapConfig" template func. Call before serving.
+func (rd *Renderer) SetMap(c MapConfig) { *rd.mapCfg = c }
 
 // Page renders page with status. data becomes View.Data.
 func (rd *Renderer) Page(w http.ResponseWriter, r *http.Request, status int, page string, data any) {

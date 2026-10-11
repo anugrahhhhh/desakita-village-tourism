@@ -12,7 +12,7 @@ for (const vp of viewports) {
 
     test("halaman publik", async ({ page }) => {
       const pkg = await firstPackagePath(page);
-      for (const path of ["/", "/?q=padi", "/desa/desa-wisata-sukamaju", pkg, `/pesan/paket/${pkg.split("/").pop()}`, "/masuk", "/daftar", "/tidak-ada"]) {
+      for (const path of ["/", "/?q=padi", "/peta", "/desa/desa-wisata-sukamaju", pkg, `/pesan/paket/${pkg.split("/").pop()}`, "/masuk", "/daftar", "/tidak-ada"]) {
         await page.goto(path);
         await expectNoA11yViolations(page, `${path} @${vp.name}`);
       }

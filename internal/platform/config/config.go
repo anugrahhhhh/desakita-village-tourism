@@ -28,6 +28,17 @@ type Config struct {
 	// BaseURL is the public origin used for links in emails (APP_BASE_URL).
 	BaseURL string
 	Mail    Mail
+	Map     Map
+}
+
+// Map configures the tile server (SPEC §14). Tiles are cached in TileDir; TileUpstream is
+// where missing tiles come from ("off" serves only TileDir).
+type Map struct {
+	TileUpstream string
+	TileDir      string
+	// AttributionText overrides the translated default credit (MAP_ATTRIBUTION).
+	AttributionText string
+	AttributionURL  string
 }
 
 // Mail configures outgoing email. Without SMTPHost, messages are written to Dir as .eml
@@ -104,6 +115,22 @@ func Load(getenv func(string) string) (Config, error) {
 	cfg.Mail.SMTPPort = port
 	if t := cfg.Mail.SMTPTLS; t != "starttls" && t != "tls" && t != "none" {
 		errs = append(errs, fmt.Errorf("SMTP_TLS must be starttls, tls or none, got %q", t))
+	}
+
+	cfg.Map = Map{
+		TileUpstream:    get("MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
+		TileDir:         get("MAP_TILE_DIR", "./data/tiles"),
+		AttributionText: getenv("MAP_ATTRIBUTION"),
+		AttributionURL:  get("MAP_ATTRIBUTION_URL", "https://www.openstreetmap.org/copyright"),
+	}
+	if cfg.Map.TileUpstream == "off" {
+		cfg.Map.TileUpstream = ""
+	} else if u, err := url.Parse(cfg.Map.TileUpstream); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" ||
+		!strings.Contains(cfg.Map.TileUpstream, "{z}") || !strings.Contains(cfg.Map.TileUpstream, "{x}") || !strings.Contains(cfg.Map.TileUpstream, "{y}") {
+		errs = append(errs, fmt.Errorf("MAP_TILE_URL must be an http(s) URL with {z}, {x} and {y}, or off"))
+	}
+	if u, err := url.Parse(cfg.Map.AttributionURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		errs = append(errs, fmt.Errorf("MAP_ATTRIBUTION_URL must be an http(s) URL"))
 	}
 
 	loc, err := time.LoadLocation(get("APP_TIMEZONE", "Asia/Jakarta"))

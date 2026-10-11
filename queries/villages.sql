@@ -13,8 +13,8 @@ SELECT EXISTS (SELECT 1 FROM regions WHERE id = $1 AND kind = 'district');
 SELECT EXISTS (SELECT 1 FROM villages WHERE slug = $1);
 
 -- name: CreateVillage :one
-INSERT INTO villages (slug, name, description, district_id, address, contact_phone, contact_whatsapp)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO villages (slug, name, description, district_id, address, contact_phone, contact_whatsapp, lat, lng)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING id;
 
 -- name: AddVillageMember :exec
@@ -23,7 +23,7 @@ INSERT INTO village_members (village_id, user_id, role) VALUES ($1, $2, 'owner')
 -- name: UpdateVillageProfile :execrows
 UPDATE villages
 SET name = $2, description = $3, district_id = $4, address = $5,
-    contact_phone = $6, contact_whatsapp = $7, updated_at = now()
+    contact_phone = $6, contact_whatsapp = $7, lat = $8, lng = $9, updated_at = now()
 WHERE id = $1;
 
 -- name: GetVillage :one
@@ -109,3 +109,13 @@ SELECT status FROM villages WHERE id = $1 FOR UPDATE;
 
 -- name: CountVillagesByStatus :many
 SELECT status, count(*) AS total FROM villages GROUP BY status;
+
+-- name: ListMappedVillages :many
+-- Verified villages with a location, for the public map (SPEC §14).
+SELECT v.slug, v.name, v.lat, v.lng, d.name AS district_name, r.name AS regency_name
+FROM villages v
+JOIN regions d ON d.id = v.district_id
+JOIN regions r ON r.id = d.parent_id
+WHERE v.status = 'verified' AND v.lat IS NOT NULL
+ORDER BY v.name
+LIMIT 5000;

@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/htmx.min.js" defer></script>
   <script src="/static/app.js" defer></script>
+  {{block "head" .}}{{end}}
 </head>
 <body class="flex min-h-screen flex-col" hx-headers='{"X-CSRF-Token": "{{.CSRF}}"}'>
   <a href="#isi" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:font-semibold">{{t "nav.skip"}}</a>
@@ -68,6 +69,7 @@
 </html>{{end}}
 
 {{define "nav_links"}}
+  <a href="/peta" class="nav-link">{{t "nav.map"}}</a>
   {{if .Viewer}}
     {{if .Viewer.IsAdmin}}<a href="/admin" class="nav-link">{{t "nav.admin"}}</a>{{end}}
     <a href="/pemesanan" class="nav-link">{{t "nav.my_bookings"}}</a>

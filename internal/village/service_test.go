@@ -214,3 +214,61 @@ func TestPhotos(t *testing.T) {
 		t.Errorf("over limit: %v", err)
 	}
 }
+
+func TestLocation(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	owner := e.user(t, "lokasi@example.com")
+
+	in := e.input("Desa Berlokasi")
+	in.Lat, in.Lng = " -7,7970684 ", "110.370529"
+	id, err := e.svc.Create(ctx, owner, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, _ := e.svc.Get(ctx, id)
+	if !v.HasLocation() || *v.Lat != -7.797068 || *v.Lng != 110.370529 {
+		t.Errorf("location = %v, %v (comma decimal accepted, rounded to 6 places)", v.Lat, v.Lng)
+	}
+	if pts, _ := e.svc.Mapped(ctx); len(pts) != 0 {
+		t.Errorf("pending village on the public map: %v", pts)
+	}
+	if _, err := e.pool.Exec(ctx, `UPDATE villages SET status = 'verified' WHERE id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	pts, err := e.svc.Mapped(ctx)
+	if err != nil || len(pts) != 1 || pts[0].Slug != "desa-berlokasi" || pts[0].RegencyName != "Kab" || pts[0].Lat != -7.797068 {
+		t.Errorf("mapped = %+v, %v", pts, err)
+	}
+
+	// Clearing both fields removes the location (and the village from the map).
+	in.Lat, in.Lng = "", ""
+	if err := e.svc.UpdateProfile(ctx, id, in); err != nil {
+		t.Fatal(err)
+	}
+	if v, _ := e.svc.Get(ctx, id); v.HasLocation() {
+		t.Error("location not cleared")
+	}
+	if pts, _ := e.svc.Mapped(ctx); len(pts) != 0 {
+		t.Errorf("village without location on the map: %v", pts)
+	}
+
+	cases := map[string][2]string{
+		"validation.location_pair":    {"-7.8", ""},
+		"validation.location_number":  {"-7.8", "abc"},
+		"validation.location_outside": {"48.85", "2.35"}, // Paris
+	}
+	for key, c := range cases {
+		in.Lat, in.Lng = c[0], c[1]
+		var verr *form.ValidationError
+		if err := e.svc.UpdateProfile(ctx, id, in); !errors.As(err, &verr) || verr.Fields["location"] != key {
+			t.Errorf("%v: err = %v, want %s", c, err, key)
+		}
+	}
+	for _, bad := range []string{"NaN", "Inf", "1e400"} {
+		in.Lat, in.Lng = bad, "110"
+		if err := e.svc.UpdateProfile(ctx, id, in); err == nil {
+			t.Errorf("%s accepted", bad)
+		}
+	}
+}

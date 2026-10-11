@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -24,6 +25,7 @@ import (
 	"desakita/internal/db"
 	"desakita/internal/platform/audit"
 	"desakita/internal/platform/form"
+	"desakita/internal/platform/geo"
 	"desakita/internal/platform/phone"
 	"desakita/internal/platform/upload"
 )
@@ -58,9 +60,20 @@ type Village struct {
 	ContactWhatsApp string
 	Status          string
 	ReviewNote      string
+	// Lat and Lng are both set or both nil.
+	Lat, Lng *float64
 }
 
 func (v Village) IsVerified() bool { return v.Status == StatusVerified }
+
+// HasLocation reports whether the village has map coordinates.
+func (v Village) HasLocation() bool { return v.Lat != nil && v.Lng != nil }
+
+// MapPoint is a verified village on the public map.
+type MapPoint struct {
+	Slug, Name, DistrictName, RegencyName string
+	Lat, Lng                              float64
+}
 
 type Summary struct {
 	ID         int64
@@ -124,12 +137,51 @@ func NewService(pool *pgxpool.Pool, store upload.Store, logger *slog.Logger) *Se
 // ProfileInput is the raw form; DistrictID is parsed during validation.
 type ProfileInput struct {
 	Name, DistrictID, Address, Description, ContactPhone, ContactWhatsApp string
+	// Lat and Lng are optional decimal degrees; both or neither.
+	Lat, Lng string
 }
 
 type profile struct {
 	name, address, description, phone string
 	whatsapp                          *string
 	districtID                        int64
+	lat, lng                          *float64
+}
+
+// parseCoord accepts a decimal degree with a dot or a comma (Indonesian keyboards), rounded
+// to 6 decimals (about 10 cm).
+func parseCoord(s string) (float64, bool) {
+	s = strings.ReplaceAll(strings.TrimSpace(s), ",", ".")
+	if s == "" || len(s) > 20 {
+		return 0, false
+	}
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
+		return 0, false
+	}
+	return math.Round(f*1e6) / 1e6, true
+}
+
+func validateLocation(in ProfileInput, p *profile, errs form.Errors) {
+	latS, lngS := strings.TrimSpace(in.Lat), strings.TrimSpace(in.Lng)
+	if latS == "" && lngS == "" {
+		return
+	}
+	if latS == "" || lngS == "" {
+		errs.Add("location", "validation.location_pair")
+		return
+	}
+	lat, okLat := parseCoord(latS)
+	lng, okLng := parseCoord(lngS)
+	if !okLat || !okLng {
+		errs.Add("location", "validation.location_number")
+		return
+	}
+	if !geo.Indonesia.Contains(lat, lng) {
+		errs.Add("location", "validation.location_outside")
+		return
+	}
+	p.lat, p.lng = &lat, &lng
 }
 
 func (s *Service) validate(ctx context.Context, in ProfileInput) (profile, error) {
@@ -164,6 +216,7 @@ func (s *Service) validate(ctx context.Context, in ProfileInput) (profile, error
 		}
 		p.whatsapp = &wa
 	}
+	validateLocation(in, &p, errs)
 	id, err := strconv.ParseInt(in.DistrictID, 10, 64)
 	if err != nil {
 		errs.Add("district_id", "validation.required")
@@ -199,7 +252,7 @@ func (s *Service) Create(ctx context.Context, userID int64, in ProfileInput) (in
 			var err error
 			id, err = q.CreateVillage(ctx, db.CreateVillageParams{
 				Slug: slug, Name: p.name, Description: p.description, DistrictID: p.districtID,
-				Address: p.address, ContactPhone: p.phone, ContactWhatsapp: p.whatsapp,
+				Address: p.address, ContactPhone: p.phone, ContactWhatsapp: p.whatsapp, Lat: p.lat, Lng: p.lng,
 			})
 			if err != nil {
 				return err
@@ -244,7 +297,7 @@ func (s *Service) UpdateProfile(ctx context.Context, villageID int64, in Profile
 	}
 	n, err := s.q.UpdateVillageProfile(ctx, db.UpdateVillageProfileParams{
 		ID: villageID, Name: p.name, Description: p.description, DistrictID: p.districtID,
-		Address: p.address, ContactPhone: p.phone, ContactWhatsapp: p.whatsapp,
+		Address: p.address, ContactPhone: p.phone, ContactWhatsapp: p.whatsapp, Lat: p.lat, Lng: p.lng,
 	})
 	if err != nil {
 		return fmt.Errorf("update village: %w", err)
@@ -260,11 +313,28 @@ func fromRow(r db.GetVillageRow) Village {
 		ID: r.ID, Slug: r.Slug, Name: r.Name, Description: r.Description, DistrictID: r.DistrictID,
 		DistrictName: r.DistrictName, RegencyName: r.RegencyName, Address: r.Address,
 		ContactPhone: r.ContactPhone, Status: r.Status, ReviewNote: r.ReviewNote,
+		Lat: r.Lat, Lng: r.Lng,
 	}
 	if r.ContactWhatsapp != nil {
 		v.ContactWhatsApp = *r.ContactWhatsapp
 	}
 	return v
+}
+
+// Mapped returns the verified villages that have a location, sorted by name.
+func (s *Service) Mapped(ctx context.Context) ([]MapPoint, error) {
+	rows, err := s.q.ListMappedVillages(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list mapped villages: %w", err)
+	}
+	out := make([]MapPoint, 0, len(rows))
+	for _, r := range rows {
+		if r.Lat == nil || r.Lng == nil {
+			continue
+		}
+		out = append(out, MapPoint{Slug: r.Slug, Name: r.Name, DistrictName: r.DistrictName, RegencyName: r.RegencyName, Lat: *r.Lat, Lng: *r.Lng})
+	}
+	return out, nil
 }
 
 func (s *Service) Get(ctx context.Context, id int64) (Village, error) {

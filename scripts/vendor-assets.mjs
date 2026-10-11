@@ -1,6 +1,7 @@
 // Copies third-party front-end assets into web/ so the Go binary can embed them:
 //   - Plus Jakarta Sans woff2 (latin subset, only the weights the CSS uses) + OFL licence
 //   - Lucide icons as Go template partials (inline SVG, CSP-safe) + ISC licence notice
+//   - Leaflet (BSD-2-Clause): leaflet.js, leaflet.css, marker/layer images + licence
 // Run with `npm run vendor:assets`; the output is committed.
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
@@ -33,4 +34,15 @@ for (const name of ICONS) {
   out += `{{define "i-${name}"}}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${inner}</svg>{{end}}\n`;
 }
 writeFileSync("web/templates/partials/icons.html", out);
+
+mkdirSync("web/static/leaflet/images", { recursive: true });
+const leaflet = "node_modules/leaflet";
+// The source map is not vendored, so drop its reference.
+writeFileSync("web/static/leaflet/leaflet.js",
+  readFileSync(`${leaflet}/dist/leaflet.js`, "utf8").replace(/\n\/\/# sourceMappingURL=.*\n?$/, "\n"));
+copyFileSync(`${leaflet}/dist/leaflet.css`, "web/static/leaflet/leaflet.css");
+for (const f of ["marker-icon.png", "marker-icon-2x.png", "marker-shadow.png", "layers.png", "layers-2x.png"]) {
+  copyFileSync(`${leaflet}/dist/images/${f}`, `web/static/leaflet/images/${f}`);
+}
+copyFileSync(`${leaflet}/LICENSE`, "web/static/leaflet/LICENSE.txt");
 console.log(`fonts: ${FONT_WEIGHTS.length} weights, icons: ${ICONS.length}`);

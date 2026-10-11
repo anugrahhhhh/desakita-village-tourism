@@ -1,0 +1,21 @@
+{{define "title"}}{{t "map.title"}}{{end}}
+{{define "head"}}{{template "map_head"}}{{end}}
+{{define "content"}}
+<h1 class="text-3xl font-extrabold tracking-tight">{{t "map.title"}}</h1>
+<p class="mt-2 max-w-2xl text-stone-700">{{t "map.intro"}}</p>
+
+{{if .Data.Points}}
+  <div class="mt-6 hidden h-[28rem] overflow-hidden rounded-2xl border border-stone-300" data-map="list" data-list="peta-daftar" role="region" aria-label="{{t "map.region_label"}}"{{template "map_attrs"}}></div>
+  <h2 class="mt-8 text-xl font-bold">{{t "map.list_heading"}}</h2>
+  <ul id="peta-daftar" class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    {{range .Data.Points}}
+      <li class="card" data-lat="{{.Lat}}" data-lng="{{.Lng}}" data-name="{{.Name}}" data-place="{{.DistrictName}}, {{.RegencyName}}" data-href="/desa/{{.Slug}}">
+        <a href="/desa/{{.Slug}}" class="btn-link font-semibold">{{.Name}}</a>
+        <p class="mt-1 flex items-center gap-1.5 text-sm text-stone-700"><span class="icon size-4 text-clay-700">{{template "i-map-pin"}}</span>{{.DistrictName}}, {{.RegencyName}}</p>
+      </li>
+    {{end}}
+  </ul>
+{{else}}
+  <p class="card mt-6 text-stone-700">{{t "map.empty"}}</p>
+{{end}}
+{{end}}

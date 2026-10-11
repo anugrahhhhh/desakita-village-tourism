@@ -1,4 +1,5 @@
 {{define "title"}}{{.Data.Village.Name}}{{end}}
+{{define "head"}}{{if .Data.Village.HasLocation}}{{template "map_head"}}{{end}}{{end}}
 {{define "content"}}
 {{$v := .Data.Village}}{{$photos := .Data.Photos}}
 {{if .Data.Preview}}
@@ -43,6 +44,14 @@
   </div>
 
   <aside class="space-y-4">
+    {{if $v.HasLocation}}
+      <div class="card space-y-3">
+        <h2 class="text-lg font-bold">{{t "village.location"}}</h2>
+        <div class="hidden h-64 overflow-hidden rounded-xl border border-stone-300" data-map="point" data-lat="{{coord $v.Lat}}" data-lng="{{coord $v.Lng}}" data-name="{{$v.Name}}" role="region" aria-label="{{t "village.map_label"}}"{{template "map_attrs"}}></div>
+        <p class="text-sm text-stone-700">{{coord $v.Lat}}, {{coord $v.Lng}}</p>
+        <p><a href="https://www.openstreetmap.org/directions?to={{coord $v.Lat}}%2C{{coord $v.Lng}}" class="btn-link inline-flex min-h-11 items-center gap-1.5" rel="noopener noreferrer" target="_blank">{{t "village.directions"}}<span class="sr-only"> {{t "link.new_tab"}}</span></a></p>
+      </div>
+    {{end}}
     <div class="card space-y-3">
       <h2 class="text-lg font-bold">{{t "village.contact"}}</h2>
       {{with $v.Address}}<p class="flex items-start gap-2 text-stone-800"><span class="icon mt-0.5 size-5 text-clay-700">{{template "i-map-pin"}}</span>{{.}}</p>{{end}}

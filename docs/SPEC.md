@@ -865,3 +865,49 @@ Nilai yang tidak valid diabaikan. Setiap halaman berisi 24 hasil, dan jumlah tot
 | Header aman dari injeksi CR/LF; subjek non-ASCII dienkode RFC 2047 | `TestEnvelopeBytes`, `TestEnvelopeRejectsHeaderInjection` |
 | SMTP: AUTH PLAIN, dan menolak mengirim jika STARTTLS diwajibkan tetapi tidak tersedia | `TestSMTPTransport`, `TestSMTPRequiresStartTLSWhenConfigured` |
 | Semua template ter-render tanpa field yang hilang | `TestEmailTemplatesRender` |
+
+## 14. Peta (tahap 6)
+
+### Lokasi desa
+
+- Pengelola mengisi lokasi desa di form profil (opsional): **lintang** dan **bujur**, diisi keduanya atau dikosongkan keduanya.
+- Koordinat boleh ditulis dengan titik atau koma desimal, lalu dibulatkan ke 6 angka di belakang koma (sekitar 10 cm).
+- Koordinat harus berada di dalam kotak wilayah Indonesia (lintang −11,5 sampai 6,5; bujur 94 sampai 141,5; `geo.Indonesia`).
+- Di form tersedia peta pemilih: klik peta atau geser penanda untuk mengisi kolom. Kolom teks tetap menjadi sumber data, jadi form tetap bisa dipakai tanpa JavaScript dan dengan keyboard.
+
+### Tampilan
+
+- **Halaman desa:** jika desa punya lokasi, tampil kartu "Lokasi" berisi peta kecil dengan penanda, koordinat dalam teks, dan tautan petunjuk arah ke OpenStreetMap.
+- **`/peta`:** semua desa **terverifikasi** yang punya lokasi, maksimal 5.000 desa. Klik penanda untuk membuka popup berisi nama desa, wilayah, dan tautan ke halaman desa.
+  - Di bawah peta ada daftar desa yang sama. Daftar ini adalah isi utama halaman, dan `map.js` membuat penanda dari daftar tersebut.
+  - Tanpa JavaScript, kotak peta disembunyikan dan daftar tetap tampil.
+- Desa yang belum terverifikasi atau dinonaktifkan tidak pernah muncul di `/peta`.
+- Tautan "Peta" ada di navigasi utama.
+
+### Leaflet dan ubin dari server sendiri
+
+- **Leaflet 1.9.4 (BSD-2-Clause)** di-vendor ke `web/static/leaflet/` lewat `npm run vendor:assets` dan dimuat hanya di halaman yang berisi peta. Tidak ada CDN, dan CSP tetap `'self'`.
+- **Ubin peta** dilayani aplikasi sendiri di `/tiles/{z}/{x}/{y}.png` (`internal/platform/tiles`). Browser pengunjung tidak pernah menghubungi pihak ketiga, sehingga alamat IP pengunjung tidak bocor ke penyedia peta.
+  - **Cache:** ubin disimpan di `MAP_TILE_DIR`. Ubin yang belum ada atau sudah lebih dari 7 hari diambil dari `MAP_TILE_URL`, dengan User-Agent `DesaKita/1.0 (+APP_BASE_URL)`.
+  - **Permintaan bersamaan:** beberapa permintaan untuk ubin yang sama hanya memicu satu pengambilan ke hulu, dan maksimal dua pengambilan berjalan bersamaan.
+  - **Hulu gagal:** jika ubin lama ada, ubin lama itu yang dilayani.
+  - **Validasi:** hanya PNG berukuran ≤ 1 MiB yang disimpan dan dilayani.
+  - **Batas permintaan:** zoom 0–4 dilayani untuk seluruh dunia. Zoom 5–17 hanya dilayani untuk ubin yang beririsan dengan wilayah Indonesia. Permintaan di luar itu dijawab 404 tanpa menghubungi hulu.
+  - **Rate limit:** pengambilan ke hulu dibatasi per IP (300 sekaligus, lalu 2 per detik). Ubin yang sudah ada di cache tidak dibatasi.
+  - **Mode luring:** `MAP_TILE_URL=off` membuat aplikasi hanya melayani ubin yang sudah ada di `MAP_TILE_DIR`, misalnya ubin yang dibuat sendiri.
+- **Kebijakan ubin OpenStreetMap:** server `tile.openstreetmap.org` hanya untuk penggunaan ringan, dan atribusi wajib tampil. Cache 7 hari, User-Agent yang jelas, dan batas di atas mengikuti kebijakan itu. Untuk trafik besar, arahkan `MAP_TILE_URL` ke penyedia ubin berbayar atau server ubin sendiri, lalu sesuaikan `MAP_ATTRIBUTION` dan `MAP_ATTRIBUTION_URL`.
+
+### Kriteria dan bukti
+
+| Kriteria | Tes |
+|---|---|
+| Koordinat: koma desimal diterima, dibulatkan, harus berpasangan, harus di Indonesia, NaN/Inf ditolak, dan bisa dikosongkan | `TestLocation` (village) |
+| Hanya desa terverifikasi yang punya lokasi yang muncul di peta | `TestLocation`, `TestVillageLocationAndMap` |
+| Form profil, halaman desa, dan `/peta` memuat peta; halaman tanpa lokasi tidak memuat Leaflet | `TestVillageLocationAndMap` |
+| Validasi z/x/y dan batas wilayah Indonesia | `TestParseTile`, `TestTileRoute` |
+| Ubin diambil sekali lalu dilayani dari cache; disegarkan setelah 7 hari; ubin lama dipakai saat hulu gagal | `TestFetchesOnceThenServesFromCache` |
+| 20 permintaan bersamaan untuk satu ubin menghasilkan satu pengambilan ke hulu | `TestConcurrentMissesShareOneFetch` |
+| Respons hulu yang bukan PNG, terlalu besar, atau 404 tidak disimpan | `TestRejectsBadTilesAndUpstreamResponses` |
+| Mode luring dan rate limit pengambilan ke hulu | `TestWithoutUpstreamServesOnlyLocalTiles`, `TestMissLimit` |
+| E2E: penanda, popup, dan tautan berfungsi; semua request ke origin sendiri; tanpa pelanggaran CSP; tanpa JS daftar tetap tampil; peta pemilih mengisi kolom | `e2e/tests/map.spec.ts` |
+| `/peta` lolos axe-core WCAG 2.1 AA di 375 px dan 1280 px | `e2e/tests/a11y.spec.ts` |
