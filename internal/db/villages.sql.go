@@ -35,6 +35,35 @@ func (q *Queries) CountVillageMedia(ctx context.Context, villageID *int64) (int6
 	return count, err
 }
 
+const countVillagesByStatus = `-- name: CountVillagesByStatus :many
+SELECT status, count(*) AS total FROM villages GROUP BY status
+`
+
+type CountVillagesByStatusRow struct {
+	Status string
+	Total  int64
+}
+
+func (q *Queries) CountVillagesByStatus(ctx context.Context) ([]CountVillagesByStatusRow, error) {
+	rows, err := q.db.Query(ctx, countVillagesByStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountVillagesByStatusRow
+	for rows.Next() {
+		var i CountVillagesByStatusRow
+		if err := rows.Scan(&i.Status, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createVillage = `-- name: CreateVillage :one
 INSERT INTO villages (slug, name, description, district_id, address, contact_phone, contact_whatsapp)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -501,6 +530,18 @@ SELECT 1 FROM villages WHERE id = $1 FOR UPDATE
 func (q *Queries) LockVillage(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, lockVillage, id)
 	return err
+}
+
+const lockVillageStatus = `-- name: LockVillageStatus :one
+SELECT status FROM villages WHERE id = $1 FOR UPDATE
+`
+
+// Read the current status under a row lock so the audit entry records the real transition.
+func (q *Queries) LockVillageStatus(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRow(ctx, lockVillageStatus, id)
+	var status string
+	err := row.Scan(&status)
+	return status, err
 }
 
 const setVillageStatus = `-- name: SetVillageStatus :execrows

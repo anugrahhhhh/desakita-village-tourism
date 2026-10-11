@@ -200,10 +200,18 @@ func seedDemo(ctx context.Context, pool *pgxpool.Pool, uploads string) error {
 	if err := packages.AddPhoto(ctx, manager.ID, padi, landscape(color.RGBA{240, 200, 150, 255}, green), true, "Wisatawan menanam padi"); err != nil {
 		return err
 	}
-	_, err = packages.Create(ctx, vid, tourpackage.Input{
+	if _, err := packages.Create(ctx, vid, tourpackage.Input{
 		Name: "Belajar Membatik Tulis", Description: "Membuat sapu tangan batik tulis.",
 		Price: "85000", DurationDays: "1", DurationNights: "0", DefaultQuota: "15",
 		ActivityTypeIDs: []string{activity("budaya"), activity("kerajinan")},
+	}); err != nil {
+		return err
+	}
+
+	// A registration waiting in the admin verification queue.
+	_, err = villages.Create(ctx, manager.ID, village.ProfileInput{
+		Name: "Desa Wisata Menunggu", DistrictID: strconv.FormatInt(district, 10),
+		ContactPhone: "0812-5555-6666", Description: "Desa yang baru mendaftar.",
 	})
 	return err
 }

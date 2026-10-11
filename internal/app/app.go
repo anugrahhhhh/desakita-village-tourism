@@ -72,6 +72,7 @@ func New(opts Options) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	rd.SetLocation(opts.Config.Location)
 	authSvc, err := auth.NewService(opts.Pool)
 	if err != nil {
 		return nil, err

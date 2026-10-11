@@ -193,7 +193,17 @@ Dashboard dirancang mobile-first, dengan tombol besar dan bahasa sederhana.
 - **Admin pertama** dibuat lewat CLI: `desakita promote-admin <email>`. Tidak ada form web untuk menjadi admin.
 - **Antrean verifikasi:** admin melihat desa `pending` beserta profil dan kontaknya, lalu memilih **Verifikasi** atau **Tolak** (alasan wajib, disimpan di `review_note`).
 - **Suspend desa:** desa `verified` bisa di-suspend. Akibatnya desa hilang dari katalog dan permintaan baru ditolak. Pemesanan yang ada tidak dibatalkan otomatis, dan admin menghubungi pengelola secara manual.
-- **Laporan:** pengguna yang login bisa melaporkan desa atau paket. Admin melihat laporan `open` dan menandainya `resolved` atau `dismissed`. Setiap aksi admin mencatat pelaku dan waktunya (`verified_by`, `resolved_by`, dan seterusnya).
+- **Laporan:** pengguna yang login bisa melaporkan desa atau paket. Admin melihat laporan `open` dan menandainya `resolved` atau `dismissed`, dengan catatan penyelesaian opsional. Laporan yang sudah ditutup bisa dilihat di tab "Selesai" dan "Diabaikan".
+- **Dashboard admin** (`/admin`) berisi:
+  - kartu angka (menunggu verifikasi, laporan terbuka, desa dinonaktifkan, desa terverifikasi),
+  - antrean verifikasi dengan lama menunggu,
+  - aktivitas terbaru.
+- **Log audit** (`/admin/audit`, tahap 2):
+  - **Aksi yang dicatat:** verifikasi, tolak, nonaktifkan, aktifkan kembali, penyelesaian dan pengabaian laporan, serta pengangkatan admin lewat CLI.
+  - **Isi setiap entri:** pelaku (ID dan nama saat itu), aksi, target, status asal dan tujuan, catatan, dan waktu.
+  - **Atomik:** entri ditulis dalam transaksi yang sama dengan perubahannya, sehingga perubahan yang gagal tidak tercatat.
+  - **Append-only:** tabel `audit_log` dilindungi trigger yang menolak `UPDATE`, `DELETE`, dan `TRUNCATE`. Entri tetap ada walaupun akun admin dihapus.
+  - **Tampilan:** halaman audit punya filter aksi dan jenis objek serta pagination 50 entri. Detail desa menampilkan riwayat tindakannya sendiri.
 
 ## 6. Keamanan, penanganan galat, dan pengujian (usulan)
 
@@ -632,7 +642,20 @@ Bagian ini menjabarkan cakupan MVP (§1) menjadi cerita per peran. Setiap kriter
 1. Semua URL `/admin…` dijawab 404, bukan 403, untuk pengunjung anonim dan pengguna non-admin.
 2. Tautan "Admin" di navigasi hanya muncul untuk admin.
 
-**Bukti:** `TestAdminAreaHiddenFromNonAdmins`, `TestRequireAdmin`.
+**Bukti:** `TestAdminAreaHiddenFromNonAdmins`, `TestNewAdminPagesHiddenFromNonAdmins`, `TestRequireAdmin`.
+
+#### A-06 Log audit
+
+*Sebagai pemilik platform, saya ingin setiap tindakan admin tercatat permanen, agar keputusan moderasi bisa dipertanggungjawabkan.*
+
+1. **Aksi yang dicatat:** verifikasi, tolak, nonaktifkan, dan aktifkan kembali desa; penyelesaian dan pengabaian laporan; serta pengangkatan admin lewat CLI.
+2. **Isi entri:** pelaku, aksi, target, status asal dan tujuan, catatan, dan waktu. Waktu ditampilkan dalam WIB.
+3. **Atomik:** entri hanya ada jika perubahannya berhasil. Tindakan yang ditolak (misalnya status sudah berubah) tidak tercatat, dan transaksi yang di-rollback tidak meninggalkan entri.
+4. **Tindakan bersamaan:** dua admin yang memverifikasi desa yang sama secara bersamaan menghasilkan tepat satu perubahan dan satu entri.
+5. **Append-only:** entri tidak bisa diubah, dihapus, atau di-truncate, bahkan langsung lewat SQL. Entri tetap ada setelah akun admin dihapus.
+6. **Halaman audit:** filter aksi dan jenis objek, pagination, dan riwayat per desa di halaman detail desa.
+
+**Bukti:** `TestAuditLogIsAppendOnly`, `TestAuditRolledBackWithTransaction`, `TestAuditFilters`, `TestStatusChangesAreAudited`, `TestConcurrentAdminsAuditOnce`, `TestReports`, `TestPromoteAdmin`, `TestAdminDashboardAuditTrail`, dan E2E `admin.spec.ts`.
 
 ### 10.4 Sistem
 

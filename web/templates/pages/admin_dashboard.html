@@ -1,23 +1,48 @@
 {{define "title"}}{{t "admin.title"}}{{end}}
 {{define "content"}}
 {{$d := .Data}}
-<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-  <h1 class="text-2xl font-bold">{{t "admin.title"}}</h1>
-  <a href="/admin/laporan" class="btn-primary">{{t "admin.reports"}} ({{$d.OpenReports}})</a>
-</div>
-<nav class="mb-6 flex flex-wrap gap-2" aria-label="{{t "admin.filter"}}">
-  {{range $d.Tabs}}
-    <a href="/admin?status={{.}}" class="inline-flex min-h-11 items-center rounded-full border px-4 text-sm {{if eq . $d.Status}}border-brand-700 bg-brand-600 text-white{{else}}border-stone-300 bg-white{{end}}">{{t (printf "village.status.%s" .)}}</a>
-  {{end}}
-</nav>
-<ul class="space-y-3">
-  {{range $d.Villages}}
-    <li><a href="/admin/desa/{{.ID}}" class="card flex flex-wrap items-center justify-between gap-2 hover:border-brand-600">
-      <span><strong>{{.Name}}</strong> · {{.DistrictName}}, {{.RegencyName}}</span>
-      <span class="text-sm text-stone-600">{{t "admin.registered"}} {{date .CreatedAt}}</span>
-    </a></li>
-  {{else}}
-    <li class="card text-stone-700">{{t "admin.empty"}}</li>
-  {{end}}
+<h1 class="mb-4 text-2xl font-extrabold">{{t "admin.title"}}</h1>
+{{template "admin_nav" $d.Section}}
+
+<ul class="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+  <li><a href="/admin/desa?status=pending" class="flex h-full flex-col rounded-2xl bg-amber-100 p-4 text-amber-900 hover:ring-2 hover:ring-amber-800">
+    <span class="icon size-6">{{template "i-hourglass"}}</span>
+    <span class="mt-2 text-3xl font-extrabold">{{index $d.Counts "pending"}}</span>
+    <span class="text-sm font-semibold">{{t "admin.stat.pending"}}</span></a></li>
+  <li><a href="/admin/laporan" class="flex h-full flex-col rounded-2xl bg-red-100 p-4 text-red-900 hover:ring-2 hover:ring-red-800">
+    <span class="icon size-6">{{template "i-flag"}}</span>
+    <span class="mt-2 text-3xl font-extrabold">{{$d.OpenReports}}</span>
+    <span class="text-sm font-semibold">{{t "admin.stat.open_reports"}}</span></a></li>
+  <li><a href="/admin/desa?status=suspended" class="flex h-full flex-col rounded-2xl bg-stone-200 p-4 text-stone-800 hover:ring-2 hover:ring-stone-700">
+    <span class="icon size-6">{{template "i-triangle-alert"}}</span>
+    <span class="mt-2 text-3xl font-extrabold">{{index $d.Counts "suspended"}}</span>
+    <span class="text-sm font-semibold">{{t "admin.stat.suspended"}}</span></a></li>
+  <li><a href="/admin/desa?status=verified" class="flex h-full flex-col rounded-2xl bg-brand-50 p-4 text-brand-900 hover:ring-2 hover:ring-brand-700">
+    <span class="icon size-6">{{template "i-shield-check"}}</span>
+    <span class="mt-2 text-3xl font-extrabold">{{index $d.Counts "verified"}}</span>
+    <span class="text-sm font-semibold">{{t "admin.stat.verified"}}</span></a></li>
 </ul>
+
+<div class="grid gap-8 lg:grid-cols-2">
+  <section aria-labelledby="queue-heading">
+    <h2 id="queue-heading" class="mb-3 text-xl font-bold">{{t "admin.queue.title"}}</h2>
+    <ul class="space-y-3">
+      {{range $d.Queue}}
+        <li><a href="/admin/desa/{{.ID}}" class="card flex flex-wrap items-center justify-between gap-2 hover:border-brand-600">
+          <span><strong>{{.Name}}</strong><br><span class="text-sm text-stone-700">{{.DistrictName}}, {{.RegencyName}}</span></span>
+          <span class="badge {{if ge .DaysWaiting 3}}bg-red-100 text-red-900{{else}}bg-amber-100 text-amber-900{{end}}"><span class="icon size-4">{{template "i-clock"}}</span>{{if eq .DaysWaiting 0}}{{t "admin.queue.today"}}{{else}}{{t "admin.queue.days" .DaysWaiting}}{{end}}</span>
+        </a></li>
+      {{else}}
+        <li class="card flex items-center gap-3 text-stone-700"><span class="icon size-5 text-brand-700">{{template "i-circle-check"}}</span>{{t "admin.queue.empty"}}</li>
+      {{end}}
+    </ul>
+  </section>
+  <section aria-labelledby="recent-heading">
+    <div class="mb-3 flex items-center justify-between gap-2">
+      <h2 id="recent-heading" class="text-xl font-bold">{{t "admin.recent.title"}}</h2>
+      <a href="/admin/audit" class="btn-link text-sm">{{t "admin.recent.all"}}</a>
+    </div>
+    {{template "audit_list" $d.Recent}}
+  </section>
+</div>
 {{end}}

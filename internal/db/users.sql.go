@@ -134,14 +134,13 @@ func (q *Queries) LockMembershipsOfUserVillages(ctx context.Context, userID int6
 	return err
 }
 
-const promoteAdmin = `-- name: PromoteAdmin :execrows
-UPDATE users SET is_admin = true, updated_at = now() WHERE email = $1
+const promoteAdmin = `-- name: PromoteAdmin :one
+UPDATE users SET is_admin = true, updated_at = now() WHERE email = $1 RETURNING id
 `
 
 func (q *Queries) PromoteAdmin(ctx context.Context, email string) (int64, error) {
-	result, err := q.db.Exec(ctx, promoteAdmin, email)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+	row := q.db.QueryRow(ctx, promoteAdmin, email)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }

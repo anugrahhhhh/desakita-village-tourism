@@ -98,3 +98,10 @@ FROM regions r
 JOIN regions p ON p.id = r.parent_id
 WHERE r.kind = 'regency'
 ORDER BY p.name, r.name;
+
+-- name: LockVillageStatus :one
+-- Read the current status under a row lock so the audit entry records the real transition.
+SELECT status FROM villages WHERE id = $1 FOR UPDATE;
+
+-- name: CountVillagesByStatus :many
+SELECT status, count(*) AS total FROM villages GROUP BY status;

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 
 	"desakita/internal/db"
+	"desakita/internal/platform/audit"
 	"desakita/internal/platform/form"
 	"desakita/internal/platform/phone"
 	"desakita/internal/platform/upload"
@@ -431,17 +433,35 @@ func Slugify(name string) string {
 // ErrInvalidStatusChange means the village is not in a status the action applies to.
 var ErrInvalidStatusChange = errors.New("village: invalid status change")
 
-func (s *Service) setStatus(ctx context.Context, adminID, id int64, from []string, to, note string) error {
-	n, err := s.q.SetVillageStatus(ctx, db.SetVillageStatusParams{
-		ID: id, FromStatuses: from, ToStatus: to, ReviewNote: note, AdminID: &adminID,
+// setStatus changes the status if the current one is in from, and writes the audit entry
+// in the same transaction.
+func (s *Service) setStatus(ctx context.Context, adminID, id int64, from []string, to, note, action string) error {
+	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.q.WithTx(tx)
+		current, err := q.LockVillageStatus(ctx, id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return fmt.Errorf("lock village: %w", err)
+		}
+		if !slices.Contains(from, current) {
+			return ErrInvalidStatusChange
+		}
+		n, err := q.SetVillageStatus(ctx, db.SetVillageStatusParams{
+			ID: id, FromStatuses: from, ToStatus: to, ReviewNote: note, AdminID: &adminID,
+		})
+		if err != nil {
+			return fmt.Errorf("set village status: %w", err)
+		}
+		if n == 0 {
+			return ErrInvalidStatusChange
+		}
+		return audit.Record(ctx, tx, audit.Entry{
+			ActorID: &adminID, Action: action, TargetType: audit.TargetVillage, TargetID: id,
+			From: current, To: to, Note: note,
+		})
 	})
-	if err != nil {
-		return fmt.Errorf("set village status: %w", err)
-	}
-	if n == 0 {
-		return ErrInvalidStatusChange
-	}
-	return nil
 }
 
 func reviewNote(note string, required bool) (string, error) {
@@ -457,7 +477,7 @@ func reviewNote(note string, required bool) (string, error) {
 
 // Verify makes a pending (or previously rejected) village public.
 func (s *Service) Verify(ctx context.Context, adminID, id int64) error {
-	return s.setStatus(ctx, adminID, id, []string{StatusPending, StatusRejected}, StatusVerified, "")
+	return s.setStatus(ctx, adminID, id, []string{StatusPending, StatusRejected}, StatusVerified, "", audit.VillageVerify)
 }
 
 // Reject declines a pending registration; the reason is shown to the managers.
@@ -466,7 +486,7 @@ func (s *Service) Reject(ctx context.Context, adminID, id int64, reason string) 
 	if err != nil {
 		return err
 	}
-	return s.setStatus(ctx, adminID, id, []string{StatusPending}, StatusRejected, note)
+	return s.setStatus(ctx, adminID, id, []string{StatusPending}, StatusRejected, note, audit.VillageReject)
 }
 
 // Suspend hides a verified village and blocks new bookings. Existing bookings are kept;
@@ -476,12 +496,12 @@ func (s *Service) Suspend(ctx context.Context, adminID, id int64, reason string)
 	if err != nil {
 		return err
 	}
-	return s.setStatus(ctx, adminID, id, []string{StatusVerified}, StatusSuspended, note)
+	return s.setStatus(ctx, adminID, id, []string{StatusVerified}, StatusSuspended, note, audit.VillageSuspend)
 }
 
 // Reinstate makes a suspended village public again.
 func (s *Service) Reinstate(ctx context.Context, adminID, id int64) error {
-	return s.setStatus(ctx, adminID, id, []string{StatusSuspended}, StatusVerified, "")
+	return s.setStatus(ctx, adminID, id, []string{StatusSuspended}, StatusVerified, "", audit.VillageReinstate)
 }
 
 // AdminRow is a village in the admin queue.
@@ -539,6 +559,19 @@ func (s *Service) Regencies(ctx context.Context) ([]Regency, error) {
 	out := make([]Regency, len(rows))
 	for i, r := range rows {
 		out[i] = Regency{ID: r.ID, Name: r.Name, Province: r.ProvinceName}
+	}
+	return out, nil
+}
+
+// StatusCounts returns how many villages are in each status.
+func (s *Service) StatusCounts(ctx context.Context) (map[string]int64, error) {
+	rows, err := s.q.CountVillagesByStatus(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("count villages: %w", err)
+	}
+	out := map[string]int64{}
+	for _, r := range rows {
+		out[r.Status] = r.Total
 	}
 	return out, nil
 }

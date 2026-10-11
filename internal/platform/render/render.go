@@ -31,7 +31,11 @@ type View struct {
 	Data   any
 }
 
+// zone holds the display time zone; templates read it through the "local" func.
+type zone struct{ loc *time.Location }
+
 type Renderer struct {
+	zone   *zone
 	pages  map[string]*template.Template
 	tr     *i18n.Translator
 	sm     *scs.SessionManager
@@ -41,8 +45,11 @@ type Renderer struct {
 // New parses templates/layout.html + templates/partials/*.html with each templates/pages/*.html.
 // A page named "pages/login.html" is rendered as "login".
 func New(fsys fs.FS, tr *i18n.Translator, sm *scs.SessionManager, logger *slog.Logger) (*Renderer, error) {
+	z := &zone{loc: time.UTC}
 	funcs := template.FuncMap{
 		"t": tr.T,
+		// local converts a timestamp to the app's time zone (see SetLocation).
+		"local": func(t time.Time) time.Time { return t.In(z.loc) },
 		// rupiah formats an integer amount as "Rp 150.000".
 		"rupiah": FormatRupiah,
 		// date: "Sabtu, 15 Maret 2030"; month: "Maret 2030"; iso: "2030-03-15".
@@ -70,7 +77,14 @@ func New(fsys fs.FS, tr *i18n.Translator, sm *scs.SessionManager, logger *slog.L
 		}
 		pages[strings.TrimSuffix(path.Base(pf), ".html")] = tmpl
 	}
-	return &Renderer{pages: pages, tr: tr, sm: sm, logger: logger}, nil
+	return &Renderer{zone: z, pages: pages, tr: tr, sm: sm, logger: logger}, nil
+}
+
+// SetLocation sets the time zone used by the "local" template func. Call before serving.
+func (rd *Renderer) SetLocation(loc *time.Location) {
+	if loc != nil {
+		rd.zone.loc = loc
+	}
 }
 
 // Page renders page with status. data becomes View.Data.

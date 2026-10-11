@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"desakita/internal/db"
+	"desakita/internal/platform/audit"
 	"desakita/internal/platform/form"
 	"desakita/internal/platform/phone"
 )
@@ -149,16 +150,19 @@ func (s *Service) UserByID(ctx context.Context, id int64) (User, error) {
 	return fromRow(row), nil
 }
 
-// PromoteAdmin grants admin rights to the account with email (CLI only).
+// PromoteAdmin grants admin rights to the account with email (CLI only). The change is
+// audited with the system as actor.
 func (s *Service) PromoteAdmin(ctx context.Context, email string) error {
-	n, err := s.q.PromoteAdmin(ctx, strings.TrimSpace(email))
-	if err != nil {
-		return fmt.Errorf("promote admin: %w", err)
-	}
-	if n == 0 {
-		return ErrNotFound
-	}
-	return nil
+	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		id, err := s.q.WithTx(tx).PromoteAdmin(ctx, strings.TrimSpace(email))
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return fmt.Errorf("promote admin: %w", err)
+		}
+		return audit.Record(ctx, tx, audit.Entry{Action: audit.UserPromoteAdmin, TargetType: audit.TargetUser, TargetID: id, To: "admin"})
+	})
 }
 
 // DeleteAccount removes the user after re-checking the password. It refuses while the user

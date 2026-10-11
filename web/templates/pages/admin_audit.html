@@ -1,0 +1,39 @@
+{{define "title"}}{{t "admin.nav.audit"}} · {{t "admin.title"}}{{end}}
+{{define "content"}}
+{{$d := .Data}}
+<h1 class="mb-1 text-2xl font-extrabold">{{t "admin.nav.audit"}}</h1>
+<p class="mb-4 text-stone-700">{{t "admin.audit.explain"}}</p>
+{{template "admin_nav" $d.Section}}
+
+<form method="get" action="/admin/audit" class="card mb-6 grid gap-4 sm:grid-cols-3">
+  <div>
+    <label for="aksi" class="field-label">{{t "admin.audit.filter_action"}}</label>
+    <select id="aksi" name="aksi" class="field-input">
+      <option value="">{{t "search.all"}}</option>
+      {{range $d.ActionOptions}}<option value="{{.Value}}" {{if eq .Value $d.Action}}selected{{end}}>{{t .LabelKey}}</option>{{end}}
+    </select>
+  </div>
+  <div>
+    <label for="target" class="field-label">{{t "admin.audit.filter_target"}}</label>
+    <select id="target" name="target" class="field-input">
+      <option value="">{{t "search.all"}}</option>
+      <option value="village" {{if eq $d.Target "village"}}selected{{end}}>{{t "admin.audit.type_village"}}</option>
+      <option value="report" {{if eq $d.Target "report"}}selected{{end}}>{{t "admin.audit.type_report"}}</option>
+      <option value="user" {{if eq $d.Target "user"}}selected{{end}}>{{t "admin.audit.type_user"}}</option>
+    </select>
+  </div>
+  <div class="flex items-end gap-3">
+    <button type="submit" class="btn-primary">{{t "admin.audit.apply"}}</button>
+    {{if or $d.Action $d.Target}}<a href="/admin/audit" class="btn-link">{{t "search.reset"}}</a>{{end}}
+  </div>
+</form>
+
+{{template "audit_list" $d.Items}}
+
+{{if or $d.PrevQuery $d.NextQuery}}
+  <nav class="mt-6 flex justify-between gap-3" aria-label="{{t "search.pagination"}}">
+    {{with $d.PrevQuery}}<a href="/admin/audit?{{.}}" class="btn-secondary"><span class="icon size-5">{{template "i-chevron-left"}}</span>{{t "search.prev"}}</a>{{else}}<span></span>{{end}}
+    {{with $d.NextQuery}}<a href="/admin/audit?{{.}}" class="btn-secondary">{{t "search.next"}}<span class="icon size-5">{{template "i-chevron-right"}}</span></a>{{end}}
+  </nav>
+{{end}}
+{{end}}

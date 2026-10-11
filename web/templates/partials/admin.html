@@ -1,0 +1,44 @@
+{{/* Admin area pieces. */}}
+
+{{define "admin_nav"}}{{/* . is the section name */}}
+  <nav class="-mx-4 mb-6 overflow-x-auto px-4 sm:mx-0 sm:px-0" aria-label="{{t "admin.nav.label"}}">
+    <ul class="flex gap-2">
+      <li class="shrink-0"><a href="/admin" class="chip {{if eq . "overview"}}border-brand-700 bg-brand-700 text-white hover:text-white{{end}}" {{if eq . "overview"}}aria-current="page"{{end}}>{{t "admin.nav.overview"}}</a></li>
+      <li class="shrink-0"><a href="/admin/desa" class="chip {{if eq . "villages"}}border-brand-700 bg-brand-700 text-white hover:text-white{{end}}" {{if eq . "villages"}}aria-current="page"{{end}}>{{t "admin.nav.villages"}}</a></li>
+      <li class="shrink-0"><a href="/admin/laporan" class="chip {{if eq . "reports"}}border-brand-700 bg-brand-700 text-white hover:text-white{{end}}" {{if eq . "reports"}}aria-current="page"{{end}}>{{t "admin.reports"}}</a></li>
+      <li class="shrink-0"><a href="/admin/audit" class="chip {{if eq . "audit"}}border-brand-700 bg-brand-700 text-white hover:text-white{{end}}" {{if eq . "audit"}}aria-current="page"{{end}}>{{t "admin.nav.audit"}}</a></li>
+    </ul>
+  </nav>
+{{end}}
+
+{{define "audit_list"}}{{/* . is []audit.Item */}}
+  <ol class="divide-y divide-stone-200 rounded-2xl border border-stone-200 bg-white">
+    {{range .}}
+      <li class="flex flex-col gap-1 p-4 sm:flex-row sm:items-start sm:gap-4">
+        {{$at := local .CreatedAt}}<span class="shrink-0 text-sm text-stone-700 sm:w-44"><time datetime="{{.CreatedAt.Format "2006-01-02T15:04:05Z07:00"}}">{{date $at}}<br>{{$at.Format "15:04 MST"}}</time></span>
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold text-stone-900">{{t .ActionKey}}</p>
+          <p class="text-sm text-stone-700">
+            {{if eq .TargetType "village"}}<a href="/admin/desa/{{.TargetID}}" class="font-semibold text-brand-700 underline underline-offset-2">{{t "admin.audit.target_village" .TargetID}}</a>
+            {{else if eq .TargetType "report"}}{{t "admin.audit.target_report" .TargetID}}
+            {{else}}{{t "admin.audit.target_user" .TargetID}}{{end}}
+            {{if eq .TargetType "village"}} · {{template "status_badge_text" .From}} → {{template "status_badge_text" .To}}
+            {{else if eq .TargetType "report"}} · {{template "report_status_text" .From}} → {{template "report_status_text" .To}}{{end}}
+          </p>
+          {{with .Note}}<p class="mt-1 whitespace-pre-line text-sm text-stone-800">“{{.}}”</p>{{end}}
+        </div>
+        <span class="shrink-0 text-sm text-stone-700">{{with .ActorName}}{{.}}{{else}}{{if .ActorID}}{{t "admin.audit.deleted_actor"}}{{else}}{{t "admin.audit.system"}}{{end}}{{end}}</span>
+      </li>
+    {{else}}
+      <li class="p-4 text-stone-700">{{t "admin.audit.empty"}}</li>
+    {{end}}
+  </ol>
+{{end}}
+
+{{define "status_badge_text"}}
+  {{- if eq . "pending"}}{{t "village.status.pending"}}{{else if eq . "verified"}}{{t "village.status.verified"}}{{else if eq . "rejected"}}{{t "village.status.rejected"}}{{else}}{{t "village.status.suspended"}}{{end -}}
+{{end}}
+
+{{define "report_status_text"}}
+  {{- if eq . "open"}}{{t "report.status.open"}}{{else if eq . "resolved"}}{{t "report.status.resolved"}}{{else}}{{t "report.status.dismissed"}}{{end -}}
+{{end}}

@@ -49,8 +49,13 @@ for (const vp of viewports) {
       const admin = await adminCtx.newPage();
       await login(admin, USERS.admin, "/admin");
       await expectNoA11yViolations(admin, `/admin @${vp.name}`);
-      await admin.goto("/admin/laporan");
-      await expectNoA11yViolations(admin, `/admin/laporan @${vp.name}`);
+      for (const path of ["/admin/laporan", "/admin/laporan?status=resolved", "/admin/desa", "/admin/audit"]) {
+        await admin.goto(path);
+        await expectNoA11yViolations(admin, `${path} @${vp.name}`);
+      }
+      await admin.goto("/admin/desa?status=verified");
+      await admin.getByRole("link", { name: /Desa Wisata Sukamaju/ }).click();
+      await expectNoA11yViolations(admin, `detail desa admin @${vp.name}`);
       await adminCtx.close();
     });
   });

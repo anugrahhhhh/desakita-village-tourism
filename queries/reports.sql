@@ -12,24 +12,39 @@ INSERT INTO reports (reporter_id, target_type, target_id, reason)
 VALUES ($1, $2, $3, $4)
 RETURNING id;
 
--- name: ListOpenReports :many
-SELECT rp.id, rp.target_type, rp.target_id, rp.reason, rp.created_at,
+-- name: ListReports :many
+-- Open reports oldest first (a queue); closed ones newest first (history).
+SELECT rp.id, rp.target_type, rp.target_id, rp.reason, rp.status, rp.created_at,
+       rp.resolved_at, rp.resolution_note,
        coalesce(u.email, '')::text AS reporter_email,
+       coalesce(ru.name, '')::text AS resolver_name,
+       coalesce(v.id, pv.id, 0)::bigint AS village_id,
        coalesce(v.name, pv.name, '')::text AS village_name,
        coalesce(v.slug, pv.slug, '')::text AS village_slug,
        coalesce(p.name, '')::text AS package_name
 FROM reports rp
 LEFT JOIN users u ON u.id = rp.reporter_id
+LEFT JOIN users ru ON ru.id = rp.resolved_by
 LEFT JOIN villages v ON rp.target_type = 'village' AND v.id = rp.target_id
 LEFT JOIN tour_packages p ON rp.target_type = 'package' AND p.id = rp.target_id
 LEFT JOIN villages pv ON pv.id = p.village_id
+WHERE rp.status = @status::text
+ORDER BY CASE WHEN @status::text = 'open' THEN rp.created_at END ASC,
+         CASE WHEN @status::text <> 'open' THEN rp.resolved_at END DESC,
+         rp.id
+LIMIT 200;
+
+-- name: CountOpenReportsForVillage :one
+-- Reports about the village itself or any of its packages.
+SELECT count(*) FROM reports rp
 WHERE rp.status = 'open'
-ORDER BY rp.created_at;
+  AND ((rp.target_type = 'village' AND rp.target_id = @village_id::bigint)
+    OR (rp.target_type = 'package' AND rp.target_id IN (SELECT id FROM tour_packages WHERE village_id = @village_id::bigint)));
 
 -- name: CountOpenReports :one
 SELECT count(*) FROM reports WHERE status = 'open';
 
 -- name: ResolveReport :execrows
 UPDATE reports
-SET status = @status::text, resolved_by = @resolved_by, resolved_at = now()
+SET status = @status::text, resolved_by = @resolved_by, resolved_at = now(), resolution_note = @resolution_note
 WHERE id = @id AND status = 'open';

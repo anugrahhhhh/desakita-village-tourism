@@ -1,53 +1,70 @@
-{{define "title"}}{{t "admin.title"}} · {{.Data.Village.Name}}{{end}}
+{{define "title"}}{{.Data.Village.Name}} · {{t "admin.title"}}{{end}}
 {{define "content"}}
 {{$v := .Data.Village}}{{$csrf := .CSRF}}{{$base := printf "/admin/desa/%d" $v.ID}}
-<div class="mx-auto max-w-3xl space-y-6">
-  <nav class="text-sm"><a href="/admin?status={{$v.Status}}" class="btn-link">{{t "admin.title"}}</a></nav>
-  <div class="flex flex-wrap items-center gap-3">
-    <h1 class="text-2xl font-bold">{{$v.Name}}</h1>
-    {{template "status_badge" $v.Status}}
+{{template "admin_nav" .Data.Section}}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    <nav class="text-sm" aria-label="{{t "nav.breadcrumb"}}"><a href="/admin/desa?status={{$v.Status}}" class="btn-link gap-1"><span class="icon size-4">{{template "i-chevron-left"}}</span>{{template "status_badge_text" $v.Status}}</a></nav>
+    <div class="flex flex-wrap items-center gap-3">
+      <h1 class="text-2xl font-extrabold">{{$v.Name}}</h1>
+      {{template "status_badge" $v.Status}}
+    </div>
+
+    {{if gt .Data.OpenReports 0}}
+      <a href="/admin/laporan" class="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 font-semibold text-red-900">
+        <span class="icon size-5">{{template "i-flag"}}</span>{{t "admin.village.open_reports" .Data.OpenReports}}
+      </a>
+    {{end}}
+
+    <section class="card space-y-2">
+      <p class="flex items-start gap-2"><span class="icon mt-0.5 size-5 text-clay-700">{{template "i-map-pin"}}</span>{{$v.DistrictName}}, {{$v.RegencyName}}{{with $v.Address}} · {{.}}{{end}}</p>
+      <p class="flex items-center gap-2"><span class="icon size-5 text-brand-700">{{template "i-phone"}}</span>{{$v.ContactPhone}}{{with $v.ContactWhatsApp}} · WA {{.}}{{end}}</p>
+      {{with $v.Description}}<p class="whitespace-pre-line text-stone-800">{{.}}</p>{{end}}
+      {{with $v.ReviewNote}}<p class="text-sm text-stone-700">{{t "village.banner.reason"}}: {{.}}</p>{{end}}
+      <a href="/desa/{{$v.Slug}}" class="btn-link">{{t "manage.village.public_page"}}</a>
+    </section>
+
+    <section class="card">
+      <h2 class="mb-2 text-lg font-bold">{{t "admin.managers"}}</h2>
+      <ul class="space-y-1">
+        {{range .Data.Managers}}<li>{{.Name}} · {{.Email}}{{with .Phone}} · {{.}}{{end}}</li>{{end}}
+      </ul>
+    </section>
+
+    {{with .Data.Photos}}
+      <section class="card">
+        <h2 class="mb-2 text-lg font-bold">{{t "manage.village.photos"}}</h2>
+        <ul class="grid grid-cols-3 gap-2">{{range .}}<li><img src="/media/{{.Path}}" alt="{{.Alt $v.Name}}" width="{{.Width}}" height="{{.Height}}" class="aspect-square w-full rounded object-cover" loading="lazy"></li>{{end}}</ul>
+      </section>
+    {{end}}
+
+    <section aria-labelledby="history-heading">
+      <h2 id="history-heading" class="mb-3 text-lg font-bold">{{t "admin.village.history"}}</h2>
+      {{template "audit_list" .Data.History}}
+    </section>
   </div>
 
-  <section class="card space-y-2">
-    <p>{{$v.DistrictName}}, {{$v.RegencyName}}{{with $v.Address}} · {{.}}{{end}}</p>
-    <p>{{t "village.field.contact_phone"}}: {{$v.ContactPhone}}{{with $v.ContactWhatsApp}} · WA {{.}}{{end}}</p>
-    {{with $v.Description}}<p class="whitespace-pre-line text-stone-800">{{.}}</p>{{end}}
-    {{with $v.ReviewNote}}<p class="text-sm text-stone-600">{{t "village.banner.reason"}}: {{.}}</p>{{end}}
-    <a href="/desa/{{$v.Slug}}" class="btn-link">{{t "manage.village.public_page"}}</a>
-  </section>
-
-  <section class="card">
-    <h2 class="mb-2 text-lg font-bold">{{t "admin.managers"}}</h2>
-    <ul class="space-y-1">
-      {{range .Data.Managers}}<li>{{.Name}} · {{.Email}}{{with .Phone}} · {{.}}{{end}}</li>{{end}}
-    </ul>
-  </section>
-
-  {{with .Data.Photos}}
-    <section class="card">
-      <h2 class="mb-2 text-lg font-bold">{{t "manage.village.photos"}}</h2>
-      <ul class="grid grid-cols-3 gap-2">{{range .}}<li><img src="/media/{{.Path}}" alt="{{.Alt $v.Name}}" width="{{.Width}}" height="{{.Height}}" class="aspect-square w-full rounded object-cover" loading="lazy"></li>{{end}}</ul>
+  <aside>
+    <section class="card sticky top-24 space-y-4">
+      <h2 class="text-lg font-bold">{{t "manage.booking.actions"}}</h2>
+      {{if or (eq $v.Status "pending") (eq $v.Status "rejected")}}
+        <form method="post" action="{{$base}}/verifikasi"><input type="hidden" name="csrf_token" value="{{$csrf}}"><button class="btn-primary w-full"><span class="icon size-5">{{template "i-shield-check"}}</span>{{t "admin.verify"}}</button></form>
+      {{end}}
+      {{if eq $v.Status "suspended"}}
+        <form method="post" action="{{$base}}/aktifkan"><input type="hidden" name="csrf_token" value="{{$csrf}}"><button class="btn-primary w-full">{{t "admin.reinstate"}}</button></form>
+      {{end}}
+      {{if or (eq $v.Status "pending") (eq $v.Status "verified")}}
+        <form method="post" class="space-y-3 border-t border-stone-200 pt-4">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <label for="note" class="field-label">{{t "admin.reason"}}</label>
+          <textarea id="note" name="note" rows="3" maxlength="1000" class="field-input py-2"></textarea>
+          {{if eq $v.Status "pending"}}<button formaction="{{$base}}/tolak" class="btn-danger w-full">{{t "admin.reject"}}</button>{{end}}
+          {{if eq $v.Status "verified"}}<button formaction="{{$base}}/nonaktifkan" class="btn-danger w-full">{{t "admin.suspend"}}</button>
+            <p class="text-sm text-stone-700">{{t "admin.suspend_hint"}}</p>{{end}}
+        </form>
+      {{end}}
+      <p class="flex items-start gap-2 text-sm text-stone-700"><span class="icon mt-0.5 size-4">{{template "i-info"}}</span>{{t "admin.village.audited"}}</p>
     </section>
-  {{end}}
-
-  <section class="card space-y-4">
-    <h2 class="text-lg font-bold">{{t "manage.booking.actions"}}</h2>
-    {{if or (eq $v.Status "pending") (eq $v.Status "rejected")}}
-      <form method="post" action="{{$base}}/verifikasi"><input type="hidden" name="csrf_token" value="{{$csrf}}"><button class="btn-primary">{{t "admin.verify"}}</button></form>
-    {{end}}
-    {{if eq $v.Status "suspended"}}
-      <form method="post" action="{{$base}}/aktifkan"><input type="hidden" name="csrf_token" value="{{$csrf}}"><button class="btn-primary">{{t "admin.reinstate"}}</button></form>
-    {{end}}
-    {{if or (eq $v.Status "pending") (eq $v.Status "verified")}}
-      <form method="post" class="space-y-3 border-t border-stone-200 pt-4">
-        <input type="hidden" name="csrf_token" value="{{$csrf}}">
-        <label for="note" class="field-label">{{t "admin.reason"}}</label>
-        <textarea id="note" name="note" rows="2" maxlength="1000" class="field-input py-2"></textarea>
-        {{if eq $v.Status "pending"}}<button formaction="{{$base}}/tolak" class="btn-danger">{{t "admin.reject"}}</button>{{end}}
-        {{if eq $v.Status "verified"}}<button formaction="{{$base}}/nonaktifkan" class="btn-danger">{{t "admin.suspend"}}</button>
-          <p class="text-sm text-stone-600">{{t "admin.suspend_hint"}}</p>{{end}}
-      </form>
-    {{end}}
-  </section>
+  </aside>
 </div>
 {{end}}

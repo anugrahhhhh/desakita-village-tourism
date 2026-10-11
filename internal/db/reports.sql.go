@@ -21,6 +21,21 @@ func (q *Queries) CountOpenReports(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countOpenReportsForVillage = `-- name: CountOpenReportsForVillage :one
+SELECT count(*) FROM reports rp
+WHERE rp.status = 'open'
+  AND ((rp.target_type = 'village' AND rp.target_id = $1::bigint)
+    OR (rp.target_type = 'package' AND rp.target_id IN (SELECT id FROM tour_packages WHERE village_id = $1::bigint)))
+`
+
+// Reports about the village itself or any of its packages.
+func (q *Queries) CountOpenReportsForVillage(ctx context.Context, villageID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countOpenReportsForVillage, villageID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createReport = `-- name: CreateReport :one
 INSERT INTO reports (reporter_id, target_type, target_id, reason)
 VALUES ($1, $2, $3, $4)
@@ -46,49 +61,67 @@ func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (int
 	return id, err
 }
 
-const listOpenReports = `-- name: ListOpenReports :many
-SELECT rp.id, rp.target_type, rp.target_id, rp.reason, rp.created_at,
+const listReports = `-- name: ListReports :many
+SELECT rp.id, rp.target_type, rp.target_id, rp.reason, rp.status, rp.created_at,
+       rp.resolved_at, rp.resolution_note,
        coalesce(u.email, '')::text AS reporter_email,
+       coalesce(ru.name, '')::text AS resolver_name,
+       coalesce(v.id, pv.id, 0)::bigint AS village_id,
        coalesce(v.name, pv.name, '')::text AS village_name,
        coalesce(v.slug, pv.slug, '')::text AS village_slug,
        coalesce(p.name, '')::text AS package_name
 FROM reports rp
 LEFT JOIN users u ON u.id = rp.reporter_id
+LEFT JOIN users ru ON ru.id = rp.resolved_by
 LEFT JOIN villages v ON rp.target_type = 'village' AND v.id = rp.target_id
 LEFT JOIN tour_packages p ON rp.target_type = 'package' AND p.id = rp.target_id
 LEFT JOIN villages pv ON pv.id = p.village_id
-WHERE rp.status = 'open'
-ORDER BY rp.created_at
+WHERE rp.status = $1::text
+ORDER BY CASE WHEN $1::text = 'open' THEN rp.created_at END ASC,
+         CASE WHEN $1::text <> 'open' THEN rp.resolved_at END DESC,
+         rp.id
+LIMIT 200
 `
 
-type ListOpenReportsRow struct {
-	ID            int64
-	TargetType    string
-	TargetID      int64
-	Reason        string
-	CreatedAt     time.Time
-	ReporterEmail string
-	VillageName   string
-	VillageSlug   string
-	PackageName   string
+type ListReportsRow struct {
+	ID             int64
+	TargetType     string
+	TargetID       int64
+	Reason         string
+	Status         string
+	CreatedAt      time.Time
+	ResolvedAt     *time.Time
+	ResolutionNote string
+	ReporterEmail  string
+	ResolverName   string
+	VillageID      int64
+	VillageName    string
+	VillageSlug    string
+	PackageName    string
 }
 
-func (q *Queries) ListOpenReports(ctx context.Context) ([]ListOpenReportsRow, error) {
-	rows, err := q.db.Query(ctx, listOpenReports)
+// Open reports oldest first (a queue); closed ones newest first (history).
+func (q *Queries) ListReports(ctx context.Context, status string) ([]ListReportsRow, error) {
+	rows, err := q.db.Query(ctx, listReports, status)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListOpenReportsRow
+	var items []ListReportsRow
 	for rows.Next() {
-		var i ListOpenReportsRow
+		var i ListReportsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TargetType,
 			&i.TargetID,
 			&i.Reason,
+			&i.Status,
 			&i.CreatedAt,
+			&i.ResolvedAt,
+			&i.ResolutionNote,
 			&i.ReporterEmail,
+			&i.ResolverName,
+			&i.VillageID,
 			&i.VillageName,
 			&i.VillageSlug,
 			&i.PackageName,
@@ -127,18 +160,24 @@ func (q *Queries) ReportTargetExists(ctx context.Context, arg ReportTargetExists
 
 const resolveReport = `-- name: ResolveReport :execrows
 UPDATE reports
-SET status = $1::text, resolved_by = $2, resolved_at = now()
-WHERE id = $3 AND status = 'open'
+SET status = $1::text, resolved_by = $2, resolved_at = now(), resolution_note = $3
+WHERE id = $4 AND status = 'open'
 `
 
 type ResolveReportParams struct {
-	Status     string
-	ResolvedBy *int64
-	ID         int64
+	Status         string
+	ResolvedBy     *int64
+	ResolutionNote string
+	ID             int64
 }
 
 func (q *Queries) ResolveReport(ctx context.Context, arg ResolveReportParams) (int64, error) {
-	result, err := q.db.Exec(ctx, resolveReport, arg.Status, arg.ResolvedBy, arg.ID)
+	result, err := q.db.Exec(ctx, resolveReport,
+		arg.Status,
+		arg.ResolvedBy,
+		arg.ResolutionNote,
+		arg.ID,
+	)
 	if err != nil {
 		return 0, err
 	}

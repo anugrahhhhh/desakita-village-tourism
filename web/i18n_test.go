@@ -5,9 +5,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
+	"desakita/internal/platform/audit"
 	"desakita/internal/platform/i18n"
 	"desakita/web"
 )
@@ -40,7 +42,7 @@ func TestI18nKeysExist(t *testing.T) {
 	}
 
 	// Keys passed around Go code as string literals (validation errors, flashes, error pages).
-	goKey := regexp.MustCompile(`"((?:validation|auth|account|flash|error|booking|village|package|admin|photo|upload|manage)\.[a-z0-9_.]+)"`)
+	goKey := regexp.MustCompile(`"((?:validation|auth|account|flash|error|booking|village|package|admin|photo|upload|manage|audit)\.[a-z0-9_.]+)"`)
 	err = filepath.WalkDir(filepath.Join("..", "internal"), func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return err
@@ -50,6 +52,9 @@ func TestI18nKeysExist(t *testing.T) {
 			return err
 		}
 		for _, m := range goKey.FindAllStringSubmatch(string(b), -1) {
+			if slices.Contains(audit.Actions(), m[1]) {
+				continue // audit action names ("village.verify"), not UI keys
+			}
 			if !tr.Has(m[1]) {
 				t.Errorf("%s: missing key %q", path, m[1])
 			}

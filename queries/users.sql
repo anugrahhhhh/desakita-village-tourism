@@ -35,5 +35,5 @@ WHERE traveler_id = $1;
 DELETE FROM users WHERE id = $1;
 
 
--- name: PromoteAdmin :execrows
-UPDATE users SET is_admin = true, updated_at = now() WHERE email = $1;
+-- name: PromoteAdmin :one
+UPDATE users SET is_admin = true, updated_at = now() WHERE email = $1 RETURNING id;

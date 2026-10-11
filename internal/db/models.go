@@ -14,6 +14,19 @@ type ActivityType struct {
 	Name string
 }
 
+type AuditLog struct {
+	ID         int64
+	ActorID    *int64
+	ActorName  string
+	Action     string
+	TargetType string
+	TargetID   int64
+	FromStatus string
+	ToStatus   string
+	Note       string
+	CreatedAt  time.Time
+}
+
 type Availability struct {
 	PackageID int64
 	Date      time.Time
@@ -74,15 +87,16 @@ type Region struct {
 }
 
 type Report struct {
-	ID         int64
-	ReporterID *int64
-	TargetType string
-	TargetID   int64
-	Reason     string
-	Status     string
-	ResolvedBy *int64
-	ResolvedAt *time.Time
-	CreatedAt  time.Time
+	ID             int64
+	ReporterID     *int64
+	TargetType     string
+	TargetID       int64
+	Reason         string
+	Status         string
+	ResolvedBy     *int64
+	ResolvedAt     *time.Time
+	CreatedAt      time.Time
+	ResolutionNote string
 }
 
 type Session struct {
