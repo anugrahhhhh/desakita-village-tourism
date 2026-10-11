@@ -29,20 +29,21 @@ import (
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	if err := run(logger, os.Args[1:]); err != nil {
+	// A local .env is a development convenience; real environments set variables directly.
+	_ = godotenv.Load()
+	cfg, cfgErr := config.Load(nil)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel}))
+	if cfgErr != nil {
+		logger.Error("invalid configuration", "err", cfgErr)
+		os.Exit(1)
+	}
+	if err := run(logger, cfg, os.Args[1:]); err != nil {
 		logger.Error("fatal", "err", err)
 		os.Exit(1)
 	}
 }
 
-func run(logger *slog.Logger, args []string) error {
-	// A local .env is a development convenience; real environments set variables directly.
-	_ = godotenv.Load()
-	cfg, err := config.Load(nil)
-	if err != nil {
-		return err
-	}
+func run(logger *slog.Logger, cfg config.Config, args []string) error {
 
 	cmd := "serve"
 	if len(args) > 0 {

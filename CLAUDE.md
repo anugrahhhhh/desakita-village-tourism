@@ -46,7 +46,8 @@ The module targets Go 1.26 (required by the patched `golang.org/x/image`).
 - Every UI string goes through `{{t "key"}}` / i18n keys in `web/locales/id.json`. `web/i18n_test.go` fails on missing keys, and pages render missing keys as `⟦key⟧`.
 - Integration tests use `dbtest.New(t)`, which gives a fresh database cloned from a migrated template. Never point tests at the dev database.
 - Code, identifiers and comments are in English. UI text goes through i18n (Indonesian only for now). Docs are in Indonesian.
-- Never log passwords, booking notes or phone numbers.
+- Never log passwords, booking notes or phone numbers. Request logging is `httpx.AccessLog`, which writes JSON lines with the path only (no query string, no bodies). Panics go through `httpx.Recover`.
+- `/healthz` is liveness and must never touch the DB. `/readyz` pings the DB. Dynamic pages and error pages send `Cache-Control: no-store`.
 - Client IP comes from `httpx.ClientIP`. Proxy headers are trusted only with `TRUST_PROXY=true`. Never reintroduce chi's `middleware.RealIP`, because it lets clients spoof their IP past rate limits.
 - Rate limits are wired in `internal/app` through handler hooks (`LoginLimit`, `RegisterLimit`, `CreateLimit`, `ReportLimit`). They are in-memory, which is enough for a single instance.
 - `/admin` answers 404 to non-admins (`httpx.RequireAdmin`). Village status changes go through `village.Service` (Verify/Reject/Suspend/Reinstate) with guarded UPDATEs.

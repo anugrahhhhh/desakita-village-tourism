@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -38,5 +39,19 @@ func TestLoadRejectsInvalid(t *testing.T) {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error %q does not mention %s", err, want)
 		}
+	}
+}
+
+func TestLoadLogLevel(t *testing.T) {
+	cfg, err := Load(env(map[string]string{"DATABASE_URL": "x", "LOG_LEVEL": "debug"}))
+	if err != nil || cfg.LogLevel != slog.LevelDebug {
+		t.Errorf("debug: level=%v err=%v", cfg.LogLevel, err)
+	}
+	cfg, _ = Load(env(map[string]string{"DATABASE_URL": "x"}))
+	if cfg.LogLevel != slog.LevelInfo {
+		t.Errorf("default level = %v, want INFO", cfg.LogLevel)
+	}
+	if _, err := Load(env(map[string]string{"DATABASE_URL": "x", "LOG_LEVEL": "loud"})); err == nil || !strings.Contains(err.Error(), "LOG_LEVEL") {
+		t.Errorf("invalid level accepted: %v", err)
 	}
 }

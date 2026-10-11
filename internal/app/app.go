@@ -4,6 +4,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -115,7 +116,14 @@ func New(opts Options) (*App, error) {
 	adminH.ReportLimit = ratelimit.New(time.Hour/5, 5).Middleware(user, tooMany)
 
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID, middleware.Recoverer, httpx.SecurityHeaders(opts.Config.IsProduction()))
+	r.Use(
+		middleware.RequestID,
+		httpx.AccessLog(opts.Logger),
+		httpx.Recover(opts.Logger, func(w http.ResponseWriter, r *http.Request) {
+			rd.ServerError(w, r, errors.New("panic recovered"))
+		}),
+		httpx.SecurityHeaders(opts.Config.IsProduction()),
+	)
 	r.NotFound(rd.NotFound)
 
 	static := http.StripPrefix("/static/", http.FileServerFS(web.Static()))
@@ -124,18 +132,30 @@ func New(opts Options) (*App, error) {
 		static.ServeHTTP(w, r)
 	}))
 	r.Get("/media/{name}", upload.ServeHandler(store))
+	// Liveness: the process is up and serving. Never touches dependencies, so a database
+	// outage doesn't make the orchestrator restart healthy app containers.
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Write([]byte("ok")) //nolint:errcheck
+	})
+	// Readiness: dependencies are reachable; load balancers route traffic only when ready.
+	r.Get("/readyz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
 		if err := opts.Pool.Ping(ctx); err != nil {
+			opts.Logger.WarnContext(r.Context(), "readiness check failed", "err", err)
 			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		w.Write([]byte("ok")) //nolint:errcheck
+		w.Write([]byte("ready")) //nolint:errcheck
 	})
 
 	// Everything below uses sessions, CSRF and the current viewer.
 	r.Group(func(r chi.Router) {
+		r.Use(httpx.NoStore)
 		r.Use(sm.LoadAndSave)
 		r.Use(httpx.BodyLimit(formBodyLimit, multipartBodyLimit))
 		r.Use(csrf.Protect(sm, http.HandlerFunc(rd.Forbidden), http.HandlerFunc(rd.TooLarge)))

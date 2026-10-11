@@ -4,7 +4,9 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -18,6 +20,8 @@ type Config struct {
 	// TrustProxy: take the client IP from X-Real-IP/X-Forwarded-For. Enable only behind a
 	// reverse proxy that sets these headers itself.
 	TrustProxy bool
+	// LogLevel is the minimum level written to the JSON log (LOG_LEVEL: debug|info|warn|error).
+	LogLevel slog.Level
 }
 
 func (c Config) IsProduction() bool { return c.Env == "production" }
@@ -58,6 +62,10 @@ func Load(getenv func(string) string) (Config, error) {
 		errs = append(errs, errors.New("BOOKING_PENDING_TTL must be positive"))
 	}
 	cfg.BookingPendingTTL = ttl
+
+	if err := cfg.LogLevel.UnmarshalText([]byte(strings.ToUpper(get("LOG_LEVEL", "info")))); err != nil {
+		errs = append(errs, fmt.Errorf("LOG_LEVEL: %w", err))
+	}
 
 	loc, err := time.LoadLocation(get("APP_TIMEZONE", "Asia/Jakarta"))
 	if err != nil {

@@ -21,12 +21,22 @@ services:
       db:
         condition: service_healthy
     environment:
-      APP_ENV: development
+      APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: postgres://desakita:${POSTGRES_PASSWORD:-desakita-dev}@db:5432/desakita?sslmode=disable
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       - uploads:/data/uploads
     ports:
       - "127.0.0.1:8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/readyz"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
 
 volumes:
   pgdata:
