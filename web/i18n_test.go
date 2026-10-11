@@ -42,7 +42,7 @@ func TestI18nKeysExist(t *testing.T) {
 	}
 
 	// Keys passed around Go code as string literals (validation errors, flashes, error pages).
-	goKey := regexp.MustCompile(`"((?:validation|auth|account|flash|error|booking|village|package|admin|photo|upload|manage|audit)\.[a-z0-9_.]+)"`)
+	goKey := regexp.MustCompile(`"((?:validation|auth|account|flash|error|booking|village|package|admin|photo|upload|manage|audit|review|report)\.[a-z0-9_.]+)"`)
 	err = filepath.WalkDir(filepath.Join("..", "internal"), func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return err

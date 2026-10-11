@@ -9,7 +9,7 @@ const ICONS = [
   "map-pin", "clock", "users", "calendar-days", "search", "menu", "x", "chevron-left",
   "chevron-right", "message-circle", "circle-check", "triangle-alert", "leaf", "sprout",
   "image", "info", "phone", "flag", "house", "wallet", "arrow-right", "list-checks",
-  "hourglass", "shield-check", "book-open-check",
+  "hourglass", "shield-check", "book-open-check", "star", "message-square-quote",
 ];
 
 mkdirSync("web/static/fonts", { recursive: true });

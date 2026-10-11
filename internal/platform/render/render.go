@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"io/fs"
 	"log/slog"
+	"math"
 	"net/http"
 	"path"
 	"strings"
@@ -48,6 +49,25 @@ func New(fsys fs.FS, tr *i18n.Translator, sm *scs.SessionManager, logger *slog.L
 	z := &zone{loc: time.UTC}
 	funcs := template.FuncMap{
 		"t": tr.T,
+		// stars returns five booleans: star i is filled when i < the rounded rating.
+		"stars": func(v any) []bool {
+			var r float64
+			switch x := v.(type) {
+			case float64:
+				r = x
+			case int16:
+				r = float64(x)
+			case int:
+				r = float64(x)
+			}
+			out := make([]bool, 5)
+			for i := range out {
+				out[i] = float64(i) < math.Round(r)
+			}
+			return out
+		},
+		// decimal1 formats 4.567 as "4,6" (Indonesian decimal comma).
+		"decimal1": func(v float64) string { return strings.Replace(fmt.Sprintf("%.1f", v), ".", ",", 1) },
 		// local converts a timestamp to the app's time zone (see SetLocation).
 		"local": func(t time.Time) time.Time { return t.In(z.loc) },
 		// rupiah formats an integer amount as "Rp 150.000".

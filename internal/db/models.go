@@ -99,6 +99,21 @@ type Report struct {
 	ResolutionNote string
 }
 
+type Review struct {
+	ID             int64
+	BookingID      int64
+	PackageID      int64
+	VillageID      int64
+	AuthorID       *int64
+	Rating         int16
+	Body           string
+	Status         string
+	ModerationNote string
+	ModeratedBy    *int64
+	ModeratedAt    *time.Time
+	CreatedAt      time.Time
+}
+
 type Session struct {
 	Token  string
 	Data   []byte

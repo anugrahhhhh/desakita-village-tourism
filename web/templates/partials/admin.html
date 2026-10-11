@@ -6,6 +6,7 @@
       <li class="shrink-0"><a href="/admin" class="chip {{if eq . "overview"}}border-brand-700 bg-brand-700 text-white hover:text-white{{end}}" {{if eq . "overview"}}aria-current="page"{{end}}>{{t "admin.nav.overview"}}</a></li>
       <li class="shrink-0"><a href="/admin/desa" class="chip {{if eq . "villages"}}border-brand-700 bg-brand-700 text-white hover:text-white{{end}}" {{if eq . "villages"}}aria-current="page"{{end}}>{{t "admin.nav.villages"}}</a></li>
       <li class="shrink-0"><a href="/admin/laporan" class="chip {{if eq . "reports"}}border-brand-700 bg-brand-700 text-white hover:text-white{{end}}" {{if eq . "reports"}}aria-current="page"{{end}}>{{t "admin.reports"}}</a></li>
+      <li class="shrink-0"><a href="/admin/ulasan" class="chip {{if eq . "reviews"}}border-brand-700 bg-brand-700 text-white hover:text-white{{end}}" {{if eq . "reviews"}}aria-current="page"{{end}}>{{t "admin.nav.reviews"}}</a></li>
       <li class="shrink-0"><a href="/admin/audit" class="chip {{if eq . "audit"}}border-brand-700 bg-brand-700 text-white hover:text-white{{end}}" {{if eq . "audit"}}aria-current="page"{{end}}>{{t "admin.nav.audit"}}</a></li>
     </ul>
   </nav>
@@ -21,9 +22,11 @@
           <p class="text-sm text-stone-700">
             {{if eq .TargetType "village"}}<a href="/admin/desa/{{.TargetID}}" class="font-semibold text-brand-700 underline underline-offset-2">{{t "admin.audit.target_village" .TargetID}}</a>
             {{else if eq .TargetType "report"}}{{t "admin.audit.target_report" .TargetID}}
+            {{else if eq .TargetType "review"}}<a href="/admin/ulasan?status={{.To}}" class="font-semibold text-brand-700 underline underline-offset-2">{{t "admin.audit.target_review" .TargetID}}</a>
             {{else}}{{t "admin.audit.target_user" .TargetID}}{{end}}
             {{if eq .TargetType "village"}} · {{template "status_badge_text" .From}} → {{template "status_badge_text" .To}}
-            {{else if eq .TargetType "report"}} · {{template "report_status_text" .From}} → {{template "report_status_text" .To}}{{end}}
+            {{else if eq .TargetType "report"}} · {{template "report_status_text" .From}} → {{template "report_status_text" .To}}
+            {{else if eq .TargetType "review"}} · {{template "review_status_text" .From}} → {{template "review_status_text" .To}}{{end}}
           </p>
           {{with .Note}}<p class="mt-1 whitespace-pre-line text-sm text-stone-800">“{{.}}”</p>{{end}}
         </div>
@@ -41,4 +44,8 @@
 
 {{define "report_status_text"}}
   {{- if eq . "open"}}{{t "report.status.open"}}{{else if eq . "resolved"}}{{t "report.status.resolved"}}{{else}}{{t "report.status.dismissed"}}{{end -}}
+{{end}}
+
+{{define "review_status_text"}}
+  {{- if eq . "published"}}{{t "review.status.published"}}{{else}}{{t "review.status.hidden"}}{{end -}}
 {{end}}

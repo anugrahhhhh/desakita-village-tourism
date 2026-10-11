@@ -22,6 +22,8 @@ const (
 	ReportResolve    = "report.resolve"
 	ReportDismiss    = "report.dismiss"
 	UserPromoteAdmin = "user.promote_admin"
+	ReviewHide       = "review.hide"
+	ReviewRestore    = "review.restore"
 )
 
 // Target types.
@@ -29,6 +31,7 @@ const (
 	TargetVillage = "village"
 	TargetReport  = "report"
 	TargetUser    = "user"
+	TargetReview  = "review"
 )
 
 // Entry describes one action. A nil ActorID means the system (e.g. the CLI).
@@ -81,6 +84,8 @@ var actionKeys = map[string]string{
 	ReportResolve:    "audit.action.report_resolve",
 	ReportDismiss:    "audit.action.report_dismiss",
 	UserPromoteAdmin: "audit.action.user_promote_admin",
+	ReviewHide:       "audit.action.review_hide",
+	ReviewRestore:    "audit.action.review_restore",
 }
 
 // ActionKey is the i18n key for the action's label.
@@ -88,7 +93,7 @@ func (i Item) ActionKey() string { return actionKeys[i.Action] }
 
 // Actions lists every action, for filter menus.
 func Actions() []string {
-	return []string{VillageVerify, VillageReject, VillageSuspend, VillageReinstate, ReportResolve, ReportDismiss, UserPromoteAdmin}
+	return []string{VillageVerify, VillageReject, VillageSuspend, VillageReinstate, ReportResolve, ReportDismiss, UserPromoteAdmin, ReviewHide, ReviewRestore}
 }
 
 // ActionKeyOf is the i18n key for an action name.

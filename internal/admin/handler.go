@@ -260,7 +260,7 @@ func (h *Handler) reportAction(w http.ResponseWriter, r *http.Request) {
 
 const auditPageSize = 50
 
-var auditTargets = []string{audit.TargetVillage, audit.TargetReport, audit.TargetUser}
+var auditTargets = []string{audit.TargetVillage, audit.TargetReport, audit.TargetUser, audit.TargetReview}
 
 // ActionOption is an entry of the audit action filter.
 type ActionOption struct{ Value, LabelKey string }

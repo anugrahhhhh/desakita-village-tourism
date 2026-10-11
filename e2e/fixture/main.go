@@ -200,6 +200,14 @@ func seedDemo(ctx context.Context, pool *pgxpool.Pool, uploads string) error {
 	if err := packages.AddPhoto(ctx, manager.ID, padi, landscape(color.RGBA{240, 200, 150, 255}, green), true, "Wisatawan menanam padi"); err != nil {
 		return err
 	}
+	// A visit Sari already made, so she can write a review.
+	if _, err := pool.Exec(ctx, `INSERT INTO bookings (package_id, village_id, traveler_id, start_date, party_size,
+			total_price_idr, contact_name, contact_phone, expires_at, status, decided_at, completed_at)
+		SELECT $1, $2, u.id, CURRENT_DATE - 7, 2, 300000, 'Sari Wisatawan', '0813-3333-4444',
+			now() - interval '8 days', 'completed', now() - interval '9 days', now() - interval '6 days'
+		FROM users u WHERE u.email = 'sari@e2e.test'`, padi, vid); err != nil {
+		return err
+	}
 	if _, err := packages.Create(ctx, vid, tourpackage.Input{
 		Name: "Belajar Membatik Tulis", Description: "Membuat sapu tangan batik tulis.",
 		Price: "85000", DurationDays: "1", DurationNights: "0", DefaultQuota: "15",

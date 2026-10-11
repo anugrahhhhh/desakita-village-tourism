@@ -22,6 +22,7 @@ import (
 const (
 	TargetVillage = "village"
 	TargetPackage = "package"
+	TargetReview  = "review"
 
 	StatusOpen      = "open"
 	StatusResolved  = "resolved"
@@ -43,7 +44,7 @@ func NewService(pool *pgxpool.Pool) *Service {
 func (s *Service) CreateReport(ctx context.Context, reporterID int64, targetType, targetID, reason string) error {
 	reason = strings.TrimSpace(reason)
 	errs := form.Errors{}
-	if targetType != TargetVillage && targetType != TargetPackage {
+	if targetType != TargetVillage && targetType != TargetPackage && targetType != TargetReview {
 		errs.Add("target", "validation.invalid_choice")
 	}
 	id, err := strconv.ParseInt(targetID, 10, 64)
@@ -86,6 +87,9 @@ type Report struct {
 	VillageID                int64
 	VillageName, VillageSlug string
 	PackageName              string
+	// For review targets: the reviewed package and the review text.
+	ReviewPackageID int64
+	ReviewBody      string
 }
 
 // ReportStatuses are the report tabs, in display order.
@@ -111,6 +115,7 @@ func (s *Service) Reports(ctx context.Context, status string) ([]Report, error) 
 			CreatedAt: r.CreatedAt, ResolvedAt: r.ResolvedAt, ResolutionNote: r.ResolutionNote,
 			ReporterEmail: r.ReporterEmail, ResolverName: r.ResolverName, VillageID: r.VillageID,
 			VillageName: r.VillageName, VillageSlug: r.VillageSlug, PackageName: r.PackageName,
+			ReviewPackageID: r.ReviewPackageID, ReviewBody: r.ReviewBody,
 		}
 	}
 	return out, nil

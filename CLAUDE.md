@@ -36,7 +36,8 @@ The module targets Go 1.26 (required by the patched `golang.org/x/image`).
 ## Layout and rules
 
 - Modules live in `internal/<domain>/` (`auth`, `village`, `tourpackage`, `booking`, `admin`), each with handler → service → store. Shared plumbing goes in `internal/platform/`. sqlc output goes in `internal/db/` (generated, never edit).
-- Dependencies point one way: `platform ← auth ← village ← tourpackage`, `platform ← booking`, `village ← admin`.
+- Dependencies point one way: `platform ← auth ← village ← tourpackage`, `platform ← booking`, `platform ← review`, `village ← admin`.
+  - `review` reaches bookings through `review.Bookings` (in-transaction `FOR SHARE` check that the booking is completed). `tourpackage` shows reviews through `tourpackage.Reviews`. Both adapters live in `internal/app/adapters.go`.
   - `booking` never imports `tourpackage` or `village`. It declares small interfaces (`PackageLookup`, `VillageAccess`), and `internal/app` wires the adapters.
 - All quota logic and its concurrency tests stay in `internal/booking/`. Package data reaches booking through `PackageLookup`, which runs inside booking's transaction with `FOR SHARE`. The adapter is in `internal/app/adapters.go`. Booking takes an injectable clock (`booking.Config.Now`). The expiry job runs from `serve` via `App.RunBackground`, never in tests. Quota changes are conditional `UPDATE … RETURNING` inside one transaction. Status transitions are `UPDATE … WHERE status IN (…)`. See SPEC §4.
 - Every booking action checks ownership of that booking (traveler_id, or village_id ∈ the manager's villages). Unauthorized access returns 404.

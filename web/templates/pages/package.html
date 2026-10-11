@@ -36,6 +36,12 @@
 <div class="grid gap-8 lg:grid-cols-3">
   <article class="lg:col-span-2">
     <h1 class="text-3xl font-extrabold leading-tight text-brand-900 sm:text-4xl">{{$p.Name}}</h1>
+    {{if .Data.Summary.Count}}
+      <a href="#reviews-heading" class="mt-2 inline-flex min-h-11 items-center gap-2 text-stone-800">
+        {{template "star_icons" .Data.Summary.Average}}
+        <span><strong>{{decimal1 .Data.Summary.Average}}</strong> · <span class="underline underline-offset-4">{{t "review.count" .Data.Summary.Count}}</span></span>
+      </a>
+    {{end}}
     <p class="mt-2 flex flex-wrap items-center gap-x-1.5 text-stone-700">
       <span class="icon size-5 text-clay-700">{{template "i-map-pin"}}</span>
       <a href="/desa/{{$v.Slug}}" class="inline-flex min-h-11 items-center font-semibold text-stone-800 underline decoration-stone-300 underline-offset-4 hover:text-brand-800">{{$v.Name}}</a>
@@ -76,6 +82,7 @@
         <li class="flex gap-3"><span class="badge size-7 shrink-0 justify-center bg-brand-700 p-0 text-white">3</span><span>{{t "package.how.step3"}}</span></li>
       </ol>
     </section>
+    {{if .Data.ShowReviews}}{{template "package_reviews" .}}{{end}}
   </article>
 
   {{/* Desktop booking box; phones use the bar fixed to the bottom of the screen. */}}

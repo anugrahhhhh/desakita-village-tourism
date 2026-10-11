@@ -281,6 +281,32 @@ func (q *Queries) GetBooking(ctx context.Context, id int64) (Booking, error) {
 	return i, err
 }
 
+const getCompletedBookingForReview = `-- name: GetCompletedBookingForReview :one
+SELECT id, package_id, village_id FROM bookings
+WHERE id = $1 AND traveler_id = $2 AND status = 'completed'
+FOR SHARE
+`
+
+type GetCompletedBookingForReviewParams struct {
+	ID         int64
+	TravelerID *int64
+}
+
+type GetCompletedBookingForReviewRow struct {
+	ID        int64
+	PackageID int64
+	VillageID int64
+}
+
+// Used by the review module (through an adapter) inside its transaction. FOR SHARE keeps
+// the booking from changing while the review is written.
+func (q *Queries) GetCompletedBookingForReview(ctx context.Context, arg GetCompletedBookingForReviewParams) (GetCompletedBookingForReviewRow, error) {
+	row := q.db.QueryRow(ctx, getCompletedBookingForReview, arg.ID, arg.TravelerID)
+	var i GetCompletedBookingForReviewRow
+	err := row.Scan(&i.ID, &i.PackageID, &i.VillageID)
+	return i, err
+}
+
 const insertBooking = `-- name: InsertBooking :one
 INSERT INTO bookings (package_id, village_id, traveler_id, start_date, party_size, note,
                       total_price_idr, contact_name, contact_phone, expires_at, created_at, updated_at)

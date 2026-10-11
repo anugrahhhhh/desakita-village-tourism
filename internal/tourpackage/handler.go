@@ -23,6 +23,8 @@ type Handler struct {
 	svc *Service
 	sm  *scs.SessionManager
 	rd  *render.Renderer
+	// Reviews feeds the reviews section of the package page; nil hides it. Set by internal/app.
+	Reviews Reviews
 }
 
 func NewHandler(svc *Service, sm *scs.SessionManager, rd *render.Renderer) *Handler {
@@ -354,5 +356,34 @@ func (h *Handler) publicPage(w http.ResponseWriter, r *http.Request) {
 		h.rd.ServerError(w, r, err)
 		return
 	}
-	h.rd.Page(w, r, http.StatusOK, "package", view)
+	data := packagePage{PublicView: view}
+	if h.Reviews != nil && !view.Preview {
+		page := 1
+		if n, err := strconv.Atoi(r.URL.Query().Get("ulasan")); err == nil && n > 1 && n <= 1000 {
+			page = n
+		}
+		if data.Summary, err = h.Reviews.PackageSummary(r.Context(), view.Package.ID); err != nil {
+			h.rd.ServerError(w, r, err)
+			return
+		}
+		if data.Reviews, data.ReviewsNext, err = h.Reviews.PackageReviews(r.Context(), view.Package.ID, page); err != nil {
+			h.rd.ServerError(w, r, err)
+			return
+		}
+		data.ReviewsPage, data.ShowReviews = page, true
+		data.ReviewsPrevPage, data.ReviewsNextPage = page-1, page+1
+	}
+	h.rd.Page(w, r, http.StatusOK, "package", data)
+}
+
+// packagePage is the package page's data: the public view plus its reviews.
+type packagePage struct {
+	PublicView
+	ShowReviews bool
+	Summary     ReviewSummary
+	Reviews     []ReviewItem
+	ReviewsPage int
+	ReviewsNext bool
+	// Page numbers for the "newer"/"older" links.
+	ReviewsPrevPage, ReviewsNextPage int
 }

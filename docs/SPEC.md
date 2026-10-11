@@ -756,3 +756,54 @@ Nilai yang tidak valid diabaikan. Setiap halaman berisi 24 hasil, dan jumlah tot
 - Indeks desa bisa dipakai oleh kondisi pencarian desa. Pada ribuan desa, *seq scan* memang lebih murah dan dipilih planner. Indeks desa baru menguntungkan di skala yang jauh lebih besar.
 
 **Bukti:** `TestFullTextSearch`, `TestSearchPaginationTotal`, `TestSearchUsesIndexes`, `TestSearch`, `TestHomeSearchSortAndTotal`.
+
+## 12. Ulasan dan rating (tahap 4)
+
+### Siapa dan kapan
+
+- Hanya wisatawan pemilik pemesanan yang **sudah selesai** (`completed`) yang bisa menulis ulasan.
+- Setiap pemesanan hanya bisa diulas satu kali (`UNIQUE(booking_id)`).
+- Syarat ini dicek di dalam transaksi, dengan pemesanan dikunci `FOR SHARE` lewat interface `review.Bookings` (adapternya ada di `internal/app`).
+
+### Isi ulasan
+
+- Rating 1–5 bintang dan teks 10–2000 karakter.
+- Penulis bisa menghapus ulasannya sendiri. Setelah dihapus, pemesanan itu bisa diulas lagi.
+
+### Tampilan
+
+- **Halaman paket:** rata-rata bintang, jumlah ulasan, dan sebaran 5→1 bintang. Batang sebaran digambar dengan SVG supaya aman terhadap CSP.
+- **Daftar ulasan:** 10 ulasan per halaman, dari yang terbaru.
+- **Kartu paket:** "★ 4,6 (12 ulasan)".
+- **Nama penulis:** nama depan dan inisial nama belakang ("Sari W.").
+- **Akun penulis dihapus:** ulasan tetap ada atas nama "Mantan pengguna".
+
+### Moderasi pasca-terbit
+
+- Ulasan langsung tampil, karena penulisnya sudah terbukti berkunjung.
+- Pengguna yang login bisa melaporkan ulasan (`reports.target_type = 'review'`).
+- Admin (`/admin/ulasan`, dengan tab tampil, dilaporkan, dan disembunyikan) bisa:
+  - **menyembunyikan** ulasan dengan alasan wajib, yang juga terlihat oleh penulis;
+  - **menampilkan kembali** ulasan.
+- Kedua tindakan dikunci per baris dan dicatat di log audit (`review.hide` dan `review.restore`) dalam transaksi yang sama.
+- Ulasan yang disembunyikan tidak dihitung dalam rating.
+
+### Kriteria dan bukti
+
+| Kriteria | Tes |
+|---|---|
+| Hanya pemesanan sendiri yang sudah selesai yang bisa diulas; pemesanan orang lain dijawab 404, status lain ditolak | `TestOnlyOwnCompletedBookingsCanBeReviewed` |
+| Lima kiriman bersamaan untuk pemesanan yang sama menghasilkan tepat satu ulasan | `TestConcurrentSubmissionsCreateOneReview` |
+| Validasi rating dan panjang teks | `TestValidation` |
+| Rata-rata, jumlah, sebaran, dan nama penulis yang disingkat; penghapusan akun membuat ulasan anonim | `TestSummaryListingAndAnonymisation` |
+| Pagination 10 ulasan per halaman | `TestPagination` |
+| Sembunyikan memerlukan alasan, tercatat di audit, tidak bisa dilakukan dua kali, dan ulasan keluar dari rating; tampilkan kembali juga tercatat | `TestModerationIsAudited` |
+| Penulis hanya bisa menghapus ulasannya sendiri | `TestAuthorDeletesOwnReviewOnly` |
+| Penyingkatan nama | `TestDisplayName` |
+| Alur HTTP lengkap: belum selesai → tanpa form; ulasan tampil di halaman dan kartu; laporan; admin menyembunyikan dan penulis melihat alasannya; non-admin 404 | `TestReviewJourney` |
+| Alur E2E dengan pemilihan rating lewat keyboard, serta axe di form, halaman paket, dan moderasi | `review.spec.ts`, `a11y.spec.ts` |
+
+**Keputusan untuk ditinjau:**
+- Moderasi dilakukan **pasca-terbit**, bukan pra-moderasi.
+- Tidak ada batas waktu untuk menulis ulasan setelah kunjungan.
+- Pengelola tidak bisa membalas ulasan (di luar cakupan).

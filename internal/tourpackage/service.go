@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
@@ -279,6 +280,7 @@ func (s *Service) ActivePackageCards(ctx context.Context, villageID int64) ([]vi
 			ID: r.ID, Name: r.Name, PricePerPersonIDR: r.PricePerPersonIdr,
 			DurationDays: r.DurationDays, DurationNights: r.DurationNights, CoverPath: r.CoverPath,
 			CoverCaption: r.CoverCaption, CoverWidth: coverDim(r.CoverWidth, 1200), CoverHeight: coverDim(r.CoverHeight, 900),
+			RatingAvg: r.RatingAvg, RatingCount: r.RatingCount,
 		}
 	}
 	return out, nil
@@ -532,6 +534,8 @@ type SearchResult struct {
 	CoverPath                    string
 	CoverCaption                 string
 	CoverWidth, CoverHeight      int
+	RatingAvg                    float64
+	RatingCount                  int64
 }
 
 // Meta is the location line shown on search result cards.
@@ -641,7 +645,48 @@ func (s *Service) Search(ctx context.Context, f SearchFilter) (SearchPage, error
 			DurationNights: r.DurationNights, VillageName: r.VillageName, VillageSlug: r.VillageSlug,
 			DistrictName: r.DistrictName, RegencyName: r.RegencyName, CoverPath: r.CoverPath,
 			CoverCaption: r.CoverCaption, CoverWidth: coverDim(r.CoverWidth, 1200), CoverHeight: coverDim(r.CoverHeight, 900),
+			RatingAvg: r.RatingAvg, RatingCount: r.RatingCount,
 		})
 	}
 	return out, nil
+}
+
+// ReviewSummary aggregates a package's published reviews.
+type ReviewSummary struct {
+	Average  float64
+	Count    int64
+	ByRating [5]int64
+	// SharePct[i] is the percentage of (i+1)-star reviews.
+	SharePct [5]int
+}
+
+// ReviewItem is one published review.
+type ReviewItem struct {
+	ID        int64
+	Rating    int16
+	Body      string
+	CreatedAt time.Time
+	Author    string // "" for a deleted account
+}
+
+// Reviews supplies review data for the package page. Implemented by the review module and
+// wired in internal/app, so tourpackage never imports it.
+type Reviews interface {
+	PackageSummary(ctx context.Context, packageID int64) (ReviewSummary, error)
+	PackageReviews(ctx context.Context, packageID int64, page int) (items []ReviewItem, hasNext bool, err error)
+}
+
+// DistRow is one bar of the rating distribution.
+type DistRow struct {
+	Stars, Pct int
+	Count      int64
+}
+
+// Rows returns the distribution from 5 stars down to 1.
+func (s ReviewSummary) Rows() []DistRow {
+	out := make([]DistRow, 0, 5)
+	for stars := 5; stars >= 1; stars-- {
+		out = append(out, DistRow{Stars: stars, Pct: s.SharePct[stars-1], Count: s.ByRating[stars-1]})
+	}
+	return out
 }

@@ -25,6 +25,8 @@ type PackageCard struct {
 	CoverPath                    string
 	CoverCaption                 string
 	CoverWidth, CoverHeight      int
+	RatingAvg                    float64
+	RatingCount                  int64
 }
 
 // Meta is empty: on a village page the location is already in the heading.

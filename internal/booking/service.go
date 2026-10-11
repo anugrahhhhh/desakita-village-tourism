@@ -56,6 +56,7 @@ var (
 	ErrPendingLimit       = errors.New("booking: too many pending requests")
 	ErrInvalidTransition  = errors.New("booking: invalid status transition")
 	ErrQuotaBelowReserved = errors.New("booking: quota below reserved")
+	ErrNotCompleted       = errors.New("booking: not completed")
 )
 
 // PackageInfo is what booking needs to know about a package.
@@ -607,4 +608,21 @@ func (s *Service) SetClosed(ctx context.Context, managerID, packageID int64, dat
 	return s.managePackageDate(ctx, managerID, packageID, date, func(q *db.Queries) error {
 		return q.SetClosed(ctx, db.SetClosedParams{PackageID: packageID, Date: date, IsClosed: closed})
 	})
+}
+
+// CompletedForReview returns the traveler's completed booking inside tx with a share lock,
+// for the review module. It returns ErrNotFound if the booking isn't the traveler's and
+// ErrNotCompleted if it is theirs but not completed.
+func (s *Service) CompletedForReview(ctx context.Context, tx pgx.Tx, id, travelerID int64) (Booking, error) {
+	row, err := s.q.WithTx(tx).GetCompletedBookingForReview(ctx, db.GetCompletedBookingForReviewParams{ID: id, TravelerID: &travelerID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		if _, ferr := s.ForTraveler(ctx, travelerID, id); ferr != nil {
+			return Booking{}, ferr
+		}
+		return Booking{}, ErrNotCompleted
+	}
+	if err != nil {
+		return Booking{}, fmt.Errorf("get completed booking: %w", err)
+	}
+	return Booking{ID: row.ID, PackageID: row.PackageID, VillageID: row.VillageID, Status: StatusCompleted}, nil
 }

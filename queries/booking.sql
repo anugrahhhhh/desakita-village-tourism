@@ -100,3 +100,10 @@ SELECT * FROM bookings WHERE traveler_id = $1 ORDER BY start_date DESC, id DESC;
 
 -- name: ListBookingsForVillage :many
 SELECT * FROM bookings WHERE village_id = $1 ORDER BY start_date, id;
+
+-- name: GetCompletedBookingForReview :one
+-- Used by the review module (through an adapter) inside its transaction. FOR SHARE keeps
+-- the booking from changing while the review is written.
+SELECT id, package_id, village_id FROM bookings
+WHERE id = @id AND traveler_id = @traveler_id AND status = 'completed'
+FOR SHARE;

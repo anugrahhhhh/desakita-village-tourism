@@ -24,12 +24,17 @@ FROM tour_packages WHERE village_id = $1 ORDER BY is_active DESC, name;
 -- name: ListActivePackageCards :many
 SELECT p.id, p.name, p.price_per_person_idr, p.duration_days, p.duration_nights,
        coalesce(c.path, '')::text AS cover_path, coalesce(c.caption, '')::text AS cover_caption,
-       coalesce(c.width, 0)::int AS cover_width, coalesce(c.height, 0)::int AS cover_height
+       coalesce(c.width, 0)::int AS cover_width, coalesce(c.height, 0)::int AS cover_height,
+       coalesce(rt.rating_avg, 0)::float8 AS rating_avg, coalesce(rt.rating_count, 0)::bigint AS rating_count
 FROM tour_packages p
 LEFT JOIN LATERAL (
     SELECT m.path, m.caption, m.width, m.height FROM media m
     WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1
 ) c ON true
+LEFT JOIN LATERAL (
+    SELECT avg(rv.rating) AS rating_avg, count(*) AS rating_count FROM reviews rv
+    WHERE rv.package_id = p.id AND rv.status = 'published'
+) rt ON true
 WHERE p.village_id = $1 AND p.is_active
 ORDER BY p.price_per_person_idr, p.name;
 
@@ -121,6 +126,7 @@ results AS (
            d.name AS district_name, r.name AS regency_name,
            coalesce(c.path, '')::text AS cover_path, coalesce(c.caption, '')::text AS cover_caption,
            coalesce(c.width, 0)::int AS cover_width, coalesce(c.height, 0)::int AS cover_height,
+           coalesce(rt.rating_avg, 0)::float8 AS rating_avg, coalesce(rt.rating_count, 0)::bigint AS rating_count,
            coalesce(2 * ts_rank(p.search_vector, websearch_to_tsquery('simple', sqlc.narg(query)::text))
                     + ts_rank(v.search_vector, websearch_to_tsquery('simple', sqlc.narg(query)::text))
                     + word_similarity(sqlc.narg(query)::text, p.name), 0)::float8 AS rank,
@@ -133,6 +139,10 @@ results AS (
         SELECT m.path, m.caption, m.width, m.height FROM media m
         WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1
     ) c ON true
+    LEFT JOIN LATERAL (
+        SELECT avg(rv.rating) AS rating_avg, count(*) AS rating_count FROM reviews rv
+        WHERE rv.package_id = p.id AND rv.status = 'published'
+    ) rt ON true
     WHERE p.is_active
       AND v.status = 'verified'
       AND (sqlc.narg(query)::text IS NULL OR p.id IN (SELECT id FROM text_matches))
@@ -144,7 +154,8 @@ results AS (
       AND (sqlc.narg(max_price)::bigint IS NULL OR p.price_per_person_idr <= sqlc.narg(max_price)::bigint)
 )
 SELECT id, name, price_per_person_idr, duration_days, duration_nights, village_name, village_slug,
-       district_name, regency_name, cover_path, cover_caption, cover_width, cover_height, rank, total
+       district_name, regency_name, cover_path, cover_caption, cover_width, cover_height,
+       rating_avg, rating_count, rank, total
 FROM results
 ORDER BY
     CASE WHEN @sort::text = 'relevance' THEN rank END DESC,

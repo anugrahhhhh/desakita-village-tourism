@@ -26,6 +26,7 @@ import (
 	"desakita/internal/platform/render"
 	"desakita/internal/platform/session"
 	"desakita/internal/platform/upload"
+	"desakita/internal/review"
 	"desakita/internal/tourpackage"
 	"desakita/internal/village"
 	"desakita/web"
@@ -93,6 +94,9 @@ func New(opts Options) (*App, error) {
 		Now:        opts.Now,
 	})
 	bookingH := booking.NewHandler(bookingSvc, catalog{packageSvc, villageSvc}, sm, rd, tr)
+	reviewSvc := review.NewService(opts.Pool, reviewBookings{bookingSvc, catalog{packageSvc, villageSvc}})
+	reviewH := review.NewHandler(reviewSvc, sm, rd)
+	packageH.Reviews = packageReviews{reviewSvc}
 
 	adminSvc := admin.NewService(opts.Pool)
 	adminH := admin.NewHandler(adminSvc, villageSvc, sm, rd)
@@ -115,6 +119,7 @@ func New(opts Options) (*App, error) {
 	authH.RegisterLimit = ratelimit.New(time.Hour/20, 20).Middleware(ip, tooMany)
 	bookingH.CreateLimit = ratelimit.New(time.Hour/10, 10).Middleware(user, tooMany)
 	adminH.ReportLimit = ratelimit.New(time.Hour/5, 5).Middleware(user, tooMany)
+	reviewH.CreateLimit = ratelimit.New(time.Hour/5, 5).Middleware(user, tooMany)
 
 	r := chi.NewRouter()
 	r.Use(
@@ -167,10 +172,12 @@ func New(opts Options) (*App, error) {
 		packageH.PublicRoutes(r)
 		bookingH.TravelerRoutes(r)
 		adminH.ReportRoutes(r)
+		reviewH.TravelerRoutes(r)
 
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(httpx.RequireAdmin(rd.NotFound))
 			adminH.AdminRoutes(r)
+			reviewH.AdminRoutes(r)
 		})
 
 		r.Route("/kelola", func(r chi.Router) {

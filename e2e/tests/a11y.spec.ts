@@ -24,6 +24,11 @@ for (const vp of viewports) {
       await login(page, USERS.traveler, bookPath);
       await page.locator("label:has(input[name=start_date])").first().click();
       await expectNoA11yViolations(page, `${bookPath} (tanggal dipilih) @${vp.name}`);
+      // The completed visit's review form (not yet submitted at this point of the run).
+      await page.goto("/pemesanan");
+      await page.getByRole("link", { name: /Menanam Padi/ }).last().click();
+      await page.getByRole("link", { name: "Tulis ulasan" }).click();
+      await expectNoA11yViolations(page, `form ulasan @${vp.name}`);
       for (const path of ["/pemesanan", "/akun"]) {
         await page.goto(path);
         await expectNoA11yViolations(page, `${path} @${vp.name}`);
@@ -49,7 +54,7 @@ for (const vp of viewports) {
       const admin = await adminCtx.newPage();
       await login(admin, USERS.admin, "/admin");
       await expectNoA11yViolations(admin, `/admin @${vp.name}`);
-      for (const path of ["/admin/laporan", "/admin/laporan?status=resolved", "/admin/desa", "/admin/audit"]) {
+      for (const path of ["/admin/laporan", "/admin/laporan?status=resolved", "/admin/desa", "/admin/audit", "/admin/ulasan", "/admin/ulasan?status=hidden"]) {
         await admin.goto(path);
         await expectNoA11yViolations(admin, `${path} @${vp.name}`);
       }

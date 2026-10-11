@@ -14,6 +14,7 @@
   </div>
   <div class="flex flex-1 flex-col gap-2 p-4">
     <h3 class="text-lg font-bold leading-snug text-stone-900">{{.Name}}</h3>
+    {{template "card_rating" .}}
     {{with .Meta}}<p class="flex items-start gap-1.5 text-sm text-stone-700"><span class="icon mt-0.5 size-4 text-clay-700">{{template "i-map-pin"}}</span>{{.}}</p>{{end}}
     <p class="mt-auto flex flex-wrap items-baseline gap-x-2 pt-2">
       <span class="text-xl font-extrabold text-brand-800">{{rupiah .PricePerPersonIDR}}</span>

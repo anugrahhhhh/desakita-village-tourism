@@ -1,0 +1,56 @@
+{{define "title"}}{{t "review.form.title"}}{{end}}
+{{define "content"}}
+{{$d := .Data}}{{$b := $d.Booking}}
+<div class="mx-auto max-w-2xl space-y-6">
+  <nav class="text-sm" aria-label="{{t "nav.breadcrumb"}}"><a href="/pemesanan/{{$b.ID}}" class="btn-link gap-1"><span class="icon size-4">{{template "i-chevron-left"}}</span>{{t "booking.detail.title" $b.ID}}</a></nav>
+  <div>
+    <h1 class="text-2xl font-extrabold text-brand-900">{{t "review.form.title"}}</h1>
+    <p class="mt-1 text-stone-700">{{$b.PackageName}} · {{$b.VillageName}} · {{date $b.StartDate}}</p>
+  </div>
+
+  {{with $d.Review}}
+    <section class="card space-y-3">
+      <div class="flex flex-wrap items-center gap-3">
+        {{template "star_icons" .Rating}}
+        <span class="font-semibold">{{t "review.stars_label" .Rating}}</span>
+        {{if eq .Status "hidden"}}<span class="badge bg-stone-200 text-stone-800"><span class="icon size-4">{{template "i-triangle-alert"}}</span>{{t "review.status.hidden"}}</span>
+        {{else}}<span class="badge bg-brand-100 text-brand-900"><span class="icon size-4">{{template "i-circle-check"}}</span>{{t "review.status.published"}}</span>{{end}}
+      </div>
+      <p class="whitespace-pre-line text-stone-800">{{.Body}}</p>
+      {{if eq .Status "hidden"}}<p class="rounded-xl bg-stone-100 px-4 py-3 text-sm text-stone-800">{{t "review.hidden_reason" .ModerationNote}}</p>{{end}}
+      <form method="post" action="/pemesanan/{{$b.ID}}/ulasan/hapus" class="border-t border-stone-200 pt-3">
+        <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+        <button type="submit" class="btn-secondary">{{t "review.delete"}}</button>
+      </form>
+    </section>
+  {{else}}
+    {{if $d.Eligible}}
+      <form method="post" action="/pemesanan/{{$b.ID}}/ulasan" class="card space-y-5" novalidate>
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <fieldset>
+          <legend class="field-label">{{t "review.form.rating"}}</legend>
+          <div class="flex flex-wrap gap-2">
+            {{range $d.RatingOptions}}
+              <label class="flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border-2 border-stone-300 bg-white px-3 has-[:checked]:border-amber-700 has-[:checked]:bg-amber-100 has-[:focus-visible]:outline has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-clay-600">
+                <input type="radio" name="rating" value="{{.Value}}" class="sr-only" {{if eq .Value $d.Values.Rating}}checked{{end}} required>
+                <span class="icon size-5 star-on text-amber-600" aria-hidden="true">{{template "i-star"}}</span>
+                <span class="font-semibold">{{t .LabelKey}}</span>
+              </label>
+            {{end}}
+          </div>
+          {{with index $d.Errors "rating"}}<p class="field-error">{{t .}}</p>{{end}}
+        </fieldset>
+        <div>
+          <label for="body" class="field-label">{{t "review.form.body"}}</label>
+          <textarea id="body" name="body" rows="5" minlength="10" maxlength="2000" required class="field-input py-2.5" placeholder="{{t "review.form.body_hint"}}">{{$d.Values.Body}}</textarea>
+          <p class="field-hint">{{t "review.form.public_note"}}</p>
+          {{with index $d.Errors "body"}}<p class="field-error">{{t .}}</p>{{end}}
+        </div>
+        <button type="submit" class="btn-primary w-full sm:w-auto">{{t "review.form.submit"}}</button>
+      </form>
+    {{else}}
+      <p class="card flex items-start gap-3 text-stone-800"><span class="icon mt-0.5 size-5 text-brand-700">{{template "i-info"}}</span>{{t "review.only_completed"}}</p>
+    {{end}}
+  {{end}}
+</div>
+{{end}}

@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"desakita/internal/booking"
+	"desakita/internal/review"
 	"desakita/internal/tourpackage"
 	"desakita/internal/village"
 )
@@ -83,4 +84,68 @@ func (c catalog) Village(ctx context.Context, villageID int64) (booking.VillageS
 		return booking.VillageSummary{}, err
 	}
 	return booking.VillageSummary{ID: v.ID, Name: v.Name, Slug: v.Slug}, nil
+}
+
+// reviewBookings adapts booking (+ catalog for names) to review.Bookings.
+type reviewBookings struct {
+	bookings *booking.Service
+	catalog  catalog
+}
+
+func (a reviewBookings) Summary(ctx context.Context, bookingID, travelerID int64) (review.BookingInfo, error) {
+	b, err := a.bookings.ForTraveler(ctx, travelerID, bookingID)
+	if errors.Is(err, booking.ErrNotFound) {
+		return review.BookingInfo{}, review.ErrNotFound
+	}
+	if err != nil {
+		return review.BookingInfo{}, err
+	}
+	p, err := a.catalog.Package(ctx, b.PackageID)
+	if err != nil {
+		return review.BookingInfo{}, err
+	}
+	return review.BookingInfo{
+		ID: b.ID, PackageID: b.PackageID, VillageID: b.VillageID, Status: b.Status,
+		PackageName: p.Name, VillageName: p.VillageName, VillageSlug: p.VillageSlug, StartDate: b.StartDate,
+	}, nil
+}
+
+func (a reviewBookings) ForReview(ctx context.Context, tx pgx.Tx, bookingID, travelerID int64) (review.BookingInfo, error) {
+	b, err := a.bookings.CompletedForReview(ctx, tx, bookingID, travelerID)
+	switch {
+	case errors.Is(err, booking.ErrNotFound):
+		return review.BookingInfo{}, review.ErrNotFound
+	case errors.Is(err, booking.ErrNotCompleted):
+		return review.BookingInfo{}, review.ErrNotEligible
+	case err != nil:
+		return review.BookingInfo{}, err
+	}
+	return review.BookingInfo{ID: b.ID, PackageID: b.PackageID, VillageID: b.VillageID, Status: b.Status}, nil
+}
+
+// packageReviews adapts review to tourpackage.Reviews.
+type packageReviews struct{ reviews *review.Service }
+
+func (a packageReviews) PackageSummary(ctx context.Context, packageID int64) (tourpackage.ReviewSummary, error) {
+	s, err := a.reviews.PackageSummary(ctx, packageID)
+	if err != nil {
+		return tourpackage.ReviewSummary{}, err
+	}
+	out := tourpackage.ReviewSummary{Average: s.Average, Count: s.Count, ByRating: s.ByRating}
+	for i := range out.SharePct {
+		out.SharePct[i] = s.Share(i + 1)
+	}
+	return out, nil
+}
+
+func (a packageReviews) PackageReviews(ctx context.Context, packageID int64, page int) ([]tourpackage.ReviewItem, bool, error) {
+	items, next, err := a.reviews.PackageReviews(ctx, packageID, page)
+	if err != nil {
+		return nil, false, err
+	}
+	out := make([]tourpackage.ReviewItem, len(items))
+	for i, r := range items {
+		out[i] = tourpackage.ReviewItem{ID: r.ID, Rating: r.Rating, Body: r.Body, CreatedAt: r.CreatedAt, Author: r.Author}
+	}
+	return out, next, nil
 }

@@ -18,6 +18,13 @@
 
   <section class="card">{{template "booking_facts" $b}}</section>
 
+  {{if eq $b.Status "completed"}}
+    <section class="card flex flex-wrap items-center justify-between gap-3 border-amber-200 bg-amber-100">
+      <p class="flex items-center gap-2 font-semibold text-amber-900"><span class="icon size-5 star-on text-amber-700">{{template "i-star"}}</span>{{t "review.cta_text"}}</p>
+      <a href="/pemesanan/{{$b.ID}}/ulasan" class="btn-primary">{{t "review.cta"}}</a>
+    </section>
+  {{end}}
+
   <section class="card space-y-3">
     <h2 class="text-lg font-bold">{{t "booking.detail.village_contact"}}</h2>
     <p>{{$b.Package.VillageName}} · <a href="tel:{{$b.Package.VillagePhone}}" class="btn-link">{{$b.Package.VillagePhone}}</a></p>

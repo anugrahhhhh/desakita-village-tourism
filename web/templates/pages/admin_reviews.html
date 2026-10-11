@@ -1,0 +1,41 @@
+{{define "title"}}{{t "admin.nav.reviews"}} · {{t "admin.title"}}{{end}}
+{{define "content"}}
+{{$d := .Data}}{{$csrf := .CSRF}}
+<h1 class="mb-1 text-2xl font-extrabold">{{t "admin.nav.reviews"}}</h1>
+<p class="mb-4 text-stone-700">{{t "admin.reviews.explain"}}</p>
+{{template "admin_nav" $d.Section}}
+<nav class="mb-6 flex flex-wrap gap-2" aria-label="{{t "admin.reviews.filter"}}">
+  <a href="/admin/ulasan" class="inline-flex min-h-11 items-center rounded-full border px-4 text-sm {{if and (eq $d.Status "published") (not $d.Reported)}}border-brand-700 bg-brand-700 text-white{{else}}border-stone-300 bg-white{{end}}">{{t "review.status.published"}} ({{index $d.Counts "published"}})</a>
+  <a href="/admin/ulasan?dilaporkan=1" class="inline-flex min-h-11 items-center rounded-full border px-4 text-sm {{if $d.Reported}}border-brand-700 bg-brand-700 text-white{{else}}border-stone-300 bg-white{{end}}">{{t "admin.reviews.reported"}}</a>
+  <a href="/admin/ulasan?status=hidden" class="inline-flex min-h-11 items-center rounded-full border px-4 text-sm {{if eq $d.Status "hidden"}}border-brand-700 bg-brand-700 text-white{{else}}border-stone-300 bg-white{{end}}">{{t "review.status.hidden"}} ({{index $d.Counts "hidden"}})</a>
+</nav>
+<ul class="space-y-4">
+  {{range $d.Items}}
+    <li class="card space-y-3">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+        {{template "star_icons" .Rating}}<span class="sr-only">{{t "review.stars_label" .Rating}}</span>
+        <a href="/desa/{{.VillageSlug}}/paket/{{.PackageID}}" class="btn-link">{{.PackageName}}</a>
+        <span class="text-sm text-stone-700">{{.VillageName}} · {{date (local .CreatedAt)}} · {{with .AuthorEmail}}{{.}}{{else}}{{t "admin.deleted_account"}}{{end}}</span>
+        {{if .OpenReports}}<span class="badge bg-red-100 text-red-900"><span class="icon size-4">{{template "i-flag"}}</span>{{t "admin.reviews.report_count" .OpenReports}}</span>{{end}}
+      </div>
+      <p class="whitespace-pre-line text-stone-900">{{.Body}}</p>
+      {{if eq .Status "published"}}
+        <form method="post" action="/admin/ulasan/{{.ID}}/sembunyikan" class="space-y-2 border-t border-stone-200 pt-3">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <label for="note-{{.ID}}" class="field-label">{{t "admin.reviews.hide_reason"}}</label>
+          <textarea id="note-{{.ID}}" name="note" rows="2" maxlength="1000" class="field-input py-2"></textarea>
+          <button type="submit" class="btn-danger">{{t "admin.reviews.hide"}}</button>
+        </form>
+      {{else}}
+        <p class="rounded-xl bg-stone-100 px-4 py-3 text-sm text-stone-800">{{t "review.hidden_reason" .ModerationNote}}</p>
+        <form method="post" action="/admin/ulasan/{{.ID}}/tampilkan">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <button type="submit" class="btn-primary">{{t "admin.reviews.restore"}}</button>
+        </form>
+      {{end}}
+    </li>
+  {{else}}
+    <li class="card text-stone-700">{{t "admin.reviews.empty"}}</li>
+  {{end}}
+</ul>
+{{end}}

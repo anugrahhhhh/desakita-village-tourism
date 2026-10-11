@@ -258,12 +258,17 @@ func (q *Queries) InsertPackageMedia(ctx context.Context, arg InsertPackageMedia
 const listActivePackageCards = `-- name: ListActivePackageCards :many
 SELECT p.id, p.name, p.price_per_person_idr, p.duration_days, p.duration_nights,
        coalesce(c.path, '')::text AS cover_path, coalesce(c.caption, '')::text AS cover_caption,
-       coalesce(c.width, 0)::int AS cover_width, coalesce(c.height, 0)::int AS cover_height
+       coalesce(c.width, 0)::int AS cover_width, coalesce(c.height, 0)::int AS cover_height,
+       coalesce(rt.rating_avg, 0)::float8 AS rating_avg, coalesce(rt.rating_count, 0)::bigint AS rating_count
 FROM tour_packages p
 LEFT JOIN LATERAL (
     SELECT m.path, m.caption, m.width, m.height FROM media m
     WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1
 ) c ON true
+LEFT JOIN LATERAL (
+    SELECT avg(rv.rating) AS rating_avg, count(*) AS rating_count FROM reviews rv
+    WHERE rv.package_id = p.id AND rv.status = 'published'
+) rt ON true
 WHERE p.village_id = $1 AND p.is_active
 ORDER BY p.price_per_person_idr, p.name
 `
@@ -278,6 +283,8 @@ type ListActivePackageCardsRow struct {
 	CoverCaption      string
 	CoverWidth        int32
 	CoverHeight       int32
+	RatingAvg         float64
+	RatingCount       int64
 }
 
 func (q *Queries) ListActivePackageCards(ctx context.Context, villageID int64) ([]ListActivePackageCardsRow, error) {
@@ -299,6 +306,8 @@ func (q *Queries) ListActivePackageCards(ctx context.Context, villageID int64) (
 			&i.CoverCaption,
 			&i.CoverWidth,
 			&i.CoverHeight,
+			&i.RatingAvg,
+			&i.RatingCount,
 		); err != nil {
 			return nil, err
 		}
@@ -536,6 +545,7 @@ results AS (
            d.name AS district_name, r.name AS regency_name,
            coalesce(c.path, '')::text AS cover_path, coalesce(c.caption, '')::text AS cover_caption,
            coalesce(c.width, 0)::int AS cover_width, coalesce(c.height, 0)::int AS cover_height,
+           coalesce(rt.rating_avg, 0)::float8 AS rating_avg, coalesce(rt.rating_count, 0)::bigint AS rating_count,
            coalesce(2 * ts_rank(p.search_vector, websearch_to_tsquery('simple', $4::text))
                     + ts_rank(v.search_vector, websearch_to_tsquery('simple', $4::text))
                     + word_similarity($4::text, p.name), 0)::float8 AS rank,
@@ -548,6 +558,10 @@ results AS (
         SELECT m.path, m.caption, m.width, m.height FROM media m
         WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1
     ) c ON true
+    LEFT JOIN LATERAL (
+        SELECT avg(rv.rating) AS rating_avg, count(*) AS rating_count FROM reviews rv
+        WHERE rv.package_id = p.id AND rv.status = 'published'
+    ) rt ON true
     WHERE p.is_active
       AND v.status = 'verified'
       AND ($4::text IS NULL OR p.id IN (SELECT id FROM text_matches))
@@ -559,7 +573,8 @@ results AS (
       AND ($9::bigint IS NULL OR p.price_per_person_idr <= $9::bigint)
 )
 SELECT id, name, price_per_person_idr, duration_days, duration_nights, village_name, village_slug,
-       district_name, regency_name, cover_path, cover_caption, cover_width, cover_height, rank, total
+       district_name, regency_name, cover_path, cover_caption, cover_width, cover_height,
+       rating_avg, rating_count, rank, total
 FROM results
 ORDER BY
     CASE WHEN $1::text = 'relevance' THEN rank END DESC,
@@ -595,6 +610,8 @@ type SearchPackagesRow struct {
 	CoverCaption      string
 	CoverWidth        int32
 	CoverHeight       int32
+	RatingAvg         float64
+	RatingCount       int64
 	Rank              float64
 	Total             int64
 }
@@ -637,6 +654,8 @@ func (q *Queries) SearchPackages(ctx context.Context, arg SearchPackagesParams) 
 			&i.CoverCaption,
 			&i.CoverWidth,
 			&i.CoverHeight,
+			&i.RatingAvg,
+			&i.RatingCount,
 			&i.Rank,
 			&i.Total,
 		); err != nil {
