@@ -58,6 +58,22 @@ type Booking struct {
 	UpdatedAt     time.Time
 }
 
+type EmailOutbox struct {
+	ID            int64
+	Kind          string
+	DedupeKey     string
+	ToAddress     string
+	Subject       string
+	Body          string
+	Status        string
+	Attempts      int32
+	NextAttemptAt time.Time
+	LockedUntil   *time.Time
+	LastError     string
+	CreatedAt     time.Time
+	SentAt        *time.Time
+}
+
 type Medium struct {
 	ID               int64
 	VillageID        *int64

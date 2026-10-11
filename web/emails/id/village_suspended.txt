@@ -1,0 +1,13 @@
+{{define "subject"}}{{.VillageName}} dinonaktifkan sementara{{end}}
+{{define "body"}}
+Halo {{.RecipientName}},
+
+{{.VillageName}} dinonaktifkan sementara oleh admin DesaKita. Desa tidak tampil untuk wisatawan dan tidak menerima pemesanan baru. Pemesanan yang sudah ada tidak dibatalkan otomatis.
+{{if .Note}}
+Alasan: {{.Note}}
+{{end}}
+Admin akan menghubungi Anda. Dashboard: {{.Link}}
+--
+Email ini dikirim otomatis oleh DesaKita karena ada perubahan pada desa yang Anda kelola.
+Pembayaran tidak pernah diminta lewat email; bayarlah langsung kepada pengelola desa.
+{{end}}

@@ -1,0 +1,21 @@
+{{define "subject"}}Pemesanan dibatalkan pengelola: {{.PackageName}}, {{.Date}}{{end}}
+{{define "body"}}
+Halo {{.TravelerName}},
+
+Pengelola {{.VillageName}} membatalkan pemesanan Anda.
+
+Paket     : {{.PackageName}}
+Desa      : {{.VillageName}}
+Tanggal   : {{.Date}}
+Jumlah    : {{.PartySize}} orang
+Perkiraan : {{.Total}}
+{{if .Note}}
+Keterangan dari pengelola: {{.Note}}
+{{end}}
+Jika sudah membayar uang muka, hubungi pengelola desa untuk pengembaliannya.
+
+Lihat pemesanan: {{.Link}}
+--
+Email ini dikirim otomatis oleh DesaKita karena ada perubahan pada pemesanan Anda.
+Pembayaran tidak pernah diminta lewat email; bayarlah langsung kepada pengelola desa.
+{{end}}

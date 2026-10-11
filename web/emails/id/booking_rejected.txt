@@ -1,0 +1,15 @@
+{{define "subject"}}Permintaan belum bisa diterima: {{.PackageName}}{{end}}
+{{define "body"}}
+Halo {{.TravelerName}},
+
+Mohon maaf, pengelola {{.VillageName}} belum bisa menerima permintaan Anda untuk {{.Date}}.
+{{if .Note}}
+Keterangan dari pengelola: {{.Note}}
+{{end}}
+Anda bisa memilih tanggal lain atau paket lain di DesaKita.
+
+Lihat pemesanan: {{.Link}}
+--
+Email ini dikirim otomatis oleh DesaKita karena ada perubahan pada pemesanan Anda.
+Pembayaran tidak pernah diminta lewat email; bayarlah langsung kepada pengelola desa.
+{{end}}

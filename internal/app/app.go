@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -22,6 +23,7 @@ import (
 	"desakita/internal/platform/csrf"
 	"desakita/internal/platform/httpx"
 	"desakita/internal/platform/i18n"
+	"desakita/internal/platform/mail"
 	"desakita/internal/platform/ratelimit"
 	"desakita/internal/platform/render"
 	"desakita/internal/platform/session"
@@ -46,21 +48,44 @@ type Options struct {
 	SessionCleanup time.Duration
 	// Now overrides the clock for booking rules (tests); nil means time.Now.
 	Now func() time.Time
+	// MailTransport overrides the transport built from Config.Mail (tests).
+	MailTransport mail.Transport
 }
 
 // App is the wired application: an HTTP handler plus background workers.
 type App struct {
-	Handler http.Handler
-	Booking *booking.Service
-	logger  *slog.Logger
+	Handler    http.Handler
+	Booking    *booking.Service
+	MailWorker *mail.Worker
+	logger     *slog.Logger
 }
 
 // expiryInterval is how often pending bookings past expires_at are expired (SPEC §4).
 const expiryInterval = 5 * time.Minute
 
 // RunBackground runs background workers until ctx is cancelled.
+// mailInterval is how often the outbox worker looks for due emails.
+const mailInterval = 15 * time.Second
+
+// RunBackground runs background workers (booking expiry, email outbox) until ctx ends.
 func (a *App) RunBackground(ctx context.Context) {
-	a.Booking.RunExpiry(ctx, expiryInterval, a.logger)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() { defer wg.Done(); a.Booking.RunExpiry(ctx, expiryInterval, a.logger) }()
+	go func() { defer wg.Done(); a.MailWorker.Run(ctx, mailInterval) }()
+	wg.Wait()
+}
+
+// mailTransport picks SMTP when configured, otherwise .eml files for development.
+func mailTransport(cfg config.Config, logger *slog.Logger) mail.Transport {
+	m := cfg.Mail
+	if m.SMTPHost != "" {
+		return mail.SMTPTransport{Host: m.SMTPHost, Port: m.SMTPPort, Username: m.SMTPUsername, Password: m.SMTPPassword, TLS: m.SMTPTLS}
+	}
+	if cfg.IsProduction() {
+		logger.Warn("SMTP_HOST is not set: emails are written to files, not delivered", "dir", m.Dir)
+	}
+	return mail.FileTransport{Dir: m.Dir}
 }
 
 func New(opts Options) (*App, error) {
@@ -88,11 +113,23 @@ func New(opts Options) (*App, error) {
 	packageSvc := tourpackage.NewService(opts.Pool, villageSvc, store, opts.Logger)
 	villageH := village.NewHandler(villageSvc, packageSvc, sm, rd)
 	packageH := tourpackage.NewHandler(packageSvc, sm, rd)
+	templates, err := mail.LoadTemplates(web.FS, tr.Lang())
+	if err != nil {
+		return nil, err
+	}
+	notify := notifier{templates: templates, tr: tr, loc: opts.Config.Location, baseURL: opts.Config.BaseURL}
+	villageSvc.Notifier = notify
 	bookingSvc := booking.NewService(opts.Pool, packageLookup{packageSvc}, villageSvc, booking.Config{
 		PendingTTL: opts.Config.BookingPendingTTL,
 		Location:   opts.Config.Location,
 		Now:        opts.Now,
+		Notifier:   notify,
 	})
+	transport := opts.MailTransport
+	if transport == nil {
+		transport = mailTransport(opts.Config, opts.Logger)
+	}
+	mailWorker := mail.NewWorker(opts.Pool, transport, opts.Config.Mail.From, opts.Logger)
 	bookingH := booking.NewHandler(bookingSvc, catalog{packageSvc, villageSvc}, sm, rd, tr)
 	reviewSvc := review.NewService(opts.Pool, reviewBookings{bookingSvc, catalog{packageSvc, villageSvc}})
 	reviewH := review.NewHandler(reviewSvc, sm, rd)
@@ -191,5 +228,5 @@ func New(opts Options) (*App, error) {
 			})
 		})
 	})
-	return &App{Handler: r, Booking: bookingSvc, logger: opts.Logger}, nil
+	return &App{Handler: r, Booking: bookingSvc, MailWorker: mailWorker, logger: opts.Logger}, nil
 }

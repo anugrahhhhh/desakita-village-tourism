@@ -1,0 +1,19 @@
+{{define "subject"}}Pemesanan dibatalkan wisatawan: {{.PackageName}}, {{.Date}}{{end}}
+{{define "body"}}
+Halo {{.RecipientName}},
+
+{{.TravelerName}} membatalkan pemesanan berikut. Kuotanya sudah dikembalikan ke kalender.
+
+Paket     : {{.PackageName}}
+Desa      : {{.VillageName}}
+Tanggal   : {{.Date}}
+Jumlah    : {{.PartySize}} orang
+Perkiraan : {{.Total}}
+{{if .Note}}
+Alasan: {{.Note}}
+{{end}}
+Lihat pemesanan: {{.Link}}
+--
+Email ini dikirim otomatis oleh DesaKita karena ada perubahan pada pemesanan di desa Anda.
+Pembayaran tidak pernah diminta lewat email; bayarlah langsung kepada pengelola desa.
+{{end}}

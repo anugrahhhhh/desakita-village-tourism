@@ -6,7 +6,7 @@ import (
 	"io/fs"
 )
 
-//go:embed templates locales
+//go:embed templates locales emails
 var FS embed.FS
 
 //go:embed static

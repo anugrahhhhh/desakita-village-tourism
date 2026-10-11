@@ -24,8 +24,16 @@ services:
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: postgres://desakita:${POSTGRES_PASSWORD:-desakita-dev}@db:5432/desakita?sslmode=disable
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+      MAIL_FROM: ${MAIL_FROM:-DesaKita <noreply@desakita.local>}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_TLS: ${SMTP_TLS:-starttls}
     volumes:
       - uploads:/data/uploads
+      - mail:/data/mail
     ports:
       - "127.0.0.1:8080:8080"
     read_only: true
@@ -41,3 +49,4 @@ services:
 volumes:
   pgdata:
   uploads:
+  mail:

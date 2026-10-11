@@ -1,0 +1,12 @@
+{{define "subject"}}{{.VillageName}} sudah terverifikasi{{end}}
+{{define "body"}}
+Halo {{.RecipientName}},
+
+{{.VillageName}} sudah diverifikasi admin DesaKita dan kini tampil untuk wisatawan.
+
+Pastikan paket dan kalender sudah terisi: {{.Link}}
+Halaman publik desa: {{.PublicLink}}
+--
+Email ini dikirim otomatis oleh DesaKita karena ada perubahan pada desa yang Anda kelola.
+Pembayaran tidak pernah diminta lewat email; bayarlah langsung kepada pengelola desa.
+{{end}}

@@ -1,0 +1,12 @@
+{{define "subject"}}Terima kasih sudah berkunjung ke {{.VillageName}}{{end}}
+{{define "body"}}
+Halo {{.TravelerName}},
+
+Terima kasih sudah mengikuti {{.PackageName}} di {{.VillageName}} pada {{.Date}}.
+
+Bagaimana pengalaman Anda? Ulasan Anda membantu wisatawan lain dan desa:
+{{.Link}}
+--
+Email ini dikirim otomatis oleh DesaKita karena ada perubahan pada pemesanan Anda.
+Pembayaran tidak pernah diminta lewat email; bayarlah langsung kepada pengelola desa.
+{{end}}

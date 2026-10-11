@@ -121,6 +121,36 @@ type Config struct {
 	Location   *time.Location
 	// Now defaults to time.Now; tests inject a fixed clock.
 	Now func() time.Time
+	// Notifier, if set, is told about every booking event inside the transaction that
+	// causes it (the email outbox, wired in internal/app).
+	Notifier Notifier
+}
+
+// Booking events passed to the Notifier.
+const (
+	EventRequested           = "requested"
+	EventConfirmed           = "confirmed"
+	EventRejected            = "rejected"
+	EventCancelledByTraveler = "cancelled_by_traveler"
+	EventCancelledByManager  = "cancelled_by_manager"
+	EventExpired             = "expired"
+	EventCompleted           = "completed"
+)
+
+// Notifier reacts to booking events. It runs inside the transaction that changed the
+// booking, so its side effects (queued emails) commit or roll back with the change.
+type Notifier interface {
+	BookingEvent(ctx context.Context, tx pgx.Tx, event string, bookingID int64) error
+}
+
+func (s *Service) notify(ctx context.Context, tx pgx.Tx, event string, bookingID int64) error {
+	if s.cfg.Notifier == nil {
+		return nil
+	}
+	if err := s.cfg.Notifier.BookingEvent(ctx, tx, event, bookingID); err != nil {
+		return fmt.Errorf("notify %s: %w", event, err)
+	}
+	return nil
 }
 
 type Service struct {
@@ -279,7 +309,7 @@ func (s *Service) Create(ctx context.Context, travelerID int64, in CreateInput) 
 			return fmt.Errorf("insert booking: %w", err)
 		}
 		out = fromRow(row)
-		return nil
+		return s.notify(ctx, tx, EventRequested, row.ID)
 	})
 	return out, err
 }
@@ -355,9 +385,9 @@ func mapRows(rows []db.Booking) []Booking {
 	return out
 }
 
-// transition runs fn (a conditional status UPDATE) and, if it matched and release is set,
-// returns the booking's seats to availability, all in one transaction.
-func (s *Service) transition(ctx context.Context, release bool, fn func(q *db.Queries) (db.Booking, error)) (Booking, error) {
+// transition runs fn (a conditional status UPDATE) and, if it matched, returns the seats
+// to availability (when release is set) and notifies event, all in one transaction.
+func (s *Service) transition(ctx context.Context, release bool, event string, fn func(q *db.Queries) (db.Booking, error)) (Booking, error) {
 	var out Booking
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.q.WithTx(tx)
@@ -374,7 +404,7 @@ func (s *Service) transition(ctx context.Context, release bool, fn func(q *db.Qu
 			}
 		}
 		out = fromRow(row)
-		return nil
+		return s.notify(ctx, tx, event, row.ID)
 	})
 	return out, err
 }
@@ -402,7 +432,7 @@ func (s *Service) Confirm(ctx context.Context, managerID, id int64) (Booking, er
 		return Booking{}, err
 	}
 	now := s.cfg.Now()
-	return s.transition(ctx, false, func(q *db.Queries) (db.Booking, error) {
+	return s.transition(ctx, false, EventConfirmed, func(q *db.Queries) (db.Booking, error) {
 		return q.ConfirmBooking(ctx, db.ConfirmBookingParams{ID: id, Now: now})
 	})
 }
@@ -417,7 +447,7 @@ func (s *Service) Reject(ctx context.Context, managerID, id int64, note string) 
 		return Booking{}, err
 	}
 	now := s.cfg.Now()
-	return s.transition(ctx, true, func(q *db.Queries) (db.Booking, error) {
+	return s.transition(ctx, true, EventRejected, func(q *db.Queries) (db.Booking, error) {
 		return q.RejectBooking(ctx, db.RejectBookingParams{ID: id, Now: now, DecisionNote: note})
 	})
 }
@@ -446,7 +476,11 @@ func (s *Service) cancel(ctx context.Context, id int64, by, note string) (Bookin
 		return Booking{}, err
 	}
 	now, today := s.cfg.Now(), s.Today()
-	return s.transition(ctx, true, func(q *db.Queries) (db.Booking, error) {
+	event := EventCancelledByTraveler
+	if by == CancelledByManager {
+		event = EventCancelledByManager
+	}
+	return s.transition(ctx, true, event, func(q *db.Queries) (db.Booking, error) {
 		return q.CancelBooking(ctx, db.CancelBookingParams{ID: id, Now: now, Today: today, CancelledBy: by, DecisionNote: note})
 	})
 }
@@ -457,7 +491,7 @@ func (s *Service) Complete(ctx context.Context, managerID, id int64) (Booking, e
 		return Booking{}, err
 	}
 	now, today := s.cfg.Now(), s.Today()
-	return s.transition(ctx, false, func(q *db.Queries) (db.Booking, error) {
+	return s.transition(ctx, false, EventCompleted, func(q *db.Queries) (db.Booking, error) {
 		return q.CompleteBooking(ctx, db.CompleteBookingParams{ID: id, Now: now, Today: today})
 	})
 }
@@ -484,6 +518,9 @@ func (s *Service) ExpireDue(ctx context.Context) (int, error) {
 			}
 			for _, r := range rows {
 				if err := releaseSeats(ctx, q, r); err != nil {
+					return err
+				}
+				if err := s.notify(ctx, tx, EventExpired, r.ID); err != nil {
 					return err
 				}
 			}

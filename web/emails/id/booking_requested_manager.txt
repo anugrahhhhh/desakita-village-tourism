@@ -1,0 +1,20 @@
+{{define "subject"}}Permintaan pemesanan baru: {{.PackageName}}, {{.Date}}{{end}}
+{{define "body"}}
+Halo {{.RecipientName}},
+
+Ada permintaan pemesanan baru untuk {{.VillageName}}.
+
+Pemesan   : {{.TravelerName}}
+Paket     : {{.PackageName}}
+Desa      : {{.VillageName}}
+Tanggal   : {{.Date}}
+Jumlah    : {{.PartySize}} orang
+Perkiraan : {{.Total}}
+
+Tanggapi sebelum {{.RespondBy}}. Jika tidak ditanggapi, permintaan otomatis kedaluwarsa dan kuota dikembalikan.
+
+Buka permintaan: {{.Link}}
+--
+Email ini dikirim otomatis oleh DesaKita karena ada perubahan pada pemesanan di desa Anda.
+Pembayaran tidak pernah diminta lewat email; bayarlah langsung kepada pengelola desa.
+{{end}}

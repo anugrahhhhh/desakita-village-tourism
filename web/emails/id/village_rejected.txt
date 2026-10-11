@@ -1,0 +1,13 @@
+{{define "subject"}}Pendaftaran {{.VillageName}} belum bisa diterima{{end}}
+{{define "body"}}
+Halo {{.RecipientName}},
+
+Pendaftaran {{.VillageName}} belum bisa diterima.
+
+Alasan: {{.Note}}
+
+Perbaiki data desa lalu hubungi admin untuk verifikasi ulang: {{.Link}}
+--
+Email ini dikirim otomatis oleh DesaKita karena ada perubahan pada desa yang Anda kelola.
+Pembayaran tidak pernah diminta lewat email; bayarlah langsung kepada pengelola desa.
+{{end}}

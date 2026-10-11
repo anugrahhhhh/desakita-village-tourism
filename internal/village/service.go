@@ -95,6 +95,26 @@ type Service struct {
 	q      *db.Queries
 	store  upload.Store
 	logger *slog.Logger
+	// Notifier, if set, hears about status changes inside their transaction (email outbox).
+	Notifier Notifier
+}
+
+// Village status events passed to the Notifier.
+const (
+	EventVerified   = "verified"
+	EventRejected   = "rejected"
+	EventSuspended  = "suspended"
+	EventReinstated = "reinstated"
+)
+
+// Notifier reacts to village status changes inside the transaction that made them.
+type Notifier interface {
+	VillageEvent(ctx context.Context, tx pgx.Tx, event string, villageID int64) error
+}
+
+var actionEvents = map[string]string{
+	audit.VillageVerify: EventVerified, audit.VillageReject: EventRejected,
+	audit.VillageSuspend: EventSuspended, audit.VillageReinstate: EventReinstated,
 }
 
 func NewService(pool *pgxpool.Pool, store upload.Store, logger *slog.Logger) *Service {
@@ -457,10 +477,16 @@ func (s *Service) setStatus(ctx context.Context, adminID, id int64, from []strin
 		if n == 0 {
 			return ErrInvalidStatusChange
 		}
-		return audit.Record(ctx, tx, audit.Entry{
+		if err := audit.Record(ctx, tx, audit.Entry{
 			ActorID: &adminID, Action: action, TargetType: audit.TargetVillage, TargetID: id,
 			From: current, To: to, Note: note,
-		})
+		}); err != nil {
+			return err
+		}
+		if s.Notifier == nil {
+			return nil
+		}
+		return s.Notifier.VillageEvent(ctx, tx, actionEvents[action], id)
 	})
 }
 

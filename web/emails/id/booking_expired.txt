@@ -1,0 +1,13 @@
+{{define "subject"}}Permintaan kedaluwarsa: {{.PackageName}}{{end}}
+{{define "body"}}
+Halo {{.TravelerName}},
+
+Pengelola {{.VillageName}} belum menanggapi permintaan Anda untuk {{.Date}} tepat waktu, sehingga permintaan otomatis kedaluwarsa.
+
+Anda bisa mengirim permintaan baru atau menghubungi desa langsung.
+
+Lihat pemesanan: {{.Link}}
+--
+Email ini dikirim otomatis oleh DesaKita karena ada perubahan pada pemesanan Anda.
+Pembayaran tidak pernah diminta lewat email; bayarlah langsung kepada pengelola desa.
+{{end}}

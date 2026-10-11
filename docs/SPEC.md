@@ -807,3 +807,61 @@ Nilai yang tidak valid diabaikan. Setiap halaman berisi 24 hasil, dan jumlah tot
 - Moderasi dilakukan **pasca-terbit**, bukan pra-moderasi.
 - Tidak ada batas waktu untuk menulis ulasan setelah kunjungan.
 - Pengelola tidak bisa membalas ulasan (di luar cakupan).
+
+## 13. Notifikasi email (tahap 5)
+
+### Pola outbox
+
+- Email **tidak** dikirim di dalam request. Email ditulis ke tabel `email_outbox` di **transaksi yang sama** dengan perubahan bisnisnya (pemesanan dibuat, status berubah, status desa berubah).
+  - Jika transaksi di-rollback, email ikut hilang.
+  - Jika email gagal dimasukkan ke antrean, perubahan bisnis ikut dibatalkan.
+- Worker (`mail.Worker`, dijalankan oleh `serve` setiap 15 detik):
+  - mengambil maksimal 20 email yang jatuh tempo dengan `FOR UPDATE SKIP LOCKED`, lalu menandainya `sending` dengan kunci 5 menit; dua worker tidak pernah mengirim email yang sama;
+  - mengirim email di luar transaksi, lalu menandai `sent`;
+  - jika gagal, mencoba lagi setelah 1 m, 5 m, 30 m, 2 j, lalu 6 j. Setelah 6 percobaan, status menjadi `failed`;
+  - mengambil ulang email `sending` yang kuncinya habis (worker mati di tengah jalan).
+- Pengiriman bersifat **at-least-once**. Header `Message-ID` tetap sama untuk setiap baris outbox (`<outbox-ID@domain>`), sehingga pengiriman ulang bisa dikenali sebagai duplikat oleh server penerima.
+- `dedupe_key` unik mencegah email ganda untuk peristiwa yang sama (misalnya `booking:12:confirmed:email`).
+- Email terkirim dihapus setelah 30 hari. Email yang belum terkirim untuk akun yang dihapus langsung dihapus.
+
+### Peristiwa dan penerima
+
+| Peristiwa | Penerima | Isi utama |
+|---|---|---|
+| Permintaan pemesanan dibuat | semua pengelola desa, wisatawan | paket, tanggal, jumlah orang, perkiraan total, batas waktu tanggapan |
+| Dikonfirmasi | wisatawan | detail pemesanan dan tautan |
+| Ditolak | wisatawan | alasan dari pengelola (jika ada) |
+| Dibatalkan wisatawan | semua pengelola desa | detail pemesanan |
+| Dibatalkan pengelola | wisatawan | alasan (jika ada) |
+| Kedaluwarsa | wisatawan | ajakan memilih tanggal atau paket lain |
+| Selesai | wisatawan | tautan menulis ulasan |
+| Desa diverifikasi / ditolak / dinonaktifkan / diaktifkan kembali | semua pengelola desa | alasan dari admin (jika ada), tautan |
+
+### Isi dan privasi
+
+- Email berupa teks biasa (UTF-8, quoted-printable), dari template `web/emails/id/*.txt`. Setiap file punya bagian `subject` dan `body`. Bahasa baru cukup menambah folder.
+- Email **tidak pernah** memuat nomor HP, catatan pemesanan, atau kata sandi. Footer menegaskan bahwa DesaKita tidak pernah meminta pembayaran lewat email.
+- Log worker hanya mencatat ID outbox, jenis, nomor percobaan, dan pesan galat. Alamat email dan isi email tidak dicatat.
+- Header `Auto-Submitted: auto-generated` mencegah balasan otomatis.
+
+### Pengiriman
+
+- Jika `SMTP_HOST` diisi, email dikirim lewat SMTP. `SMTP_TLS=starttls` (default) **mewajibkan** STARTTLS; `tls` memakai TLS langsung (port 465); `none` hanya untuk server lokal.
+- Jika `SMTP_HOST` kosong, email ditulis sebagai file `.eml` ke `MAIL_DIR` (untuk pengembangan). Di production, aplikasi memberi peringatan di log.
+- Tautan di email memakai `APP_BASE_URL`.
+
+### Kriteria dan bukti
+
+| Kriteria | Tes |
+|---|---|
+| Email masuk antrean hanya jika transaksi commit; `dedupe_key` mencegah duplikat | `TestEnqueueIsTransactionalAndDeduplicated` |
+| Setiap transisi sah memicu tepat satu peristiwa; transisi tidak sah tidak memicu apa pun | `TestNotifierSeesEachTransitionOnce` |
+| Gagal memasukkan email ke antrean membatalkan perubahan bisnis | `TestNotifierFailureRollsBackTheChange` |
+| Penerima, isi, tautan, dan alasan sesuai peristiwa; nomor HP dan catatan tidak ikut | `TestBookingEmailsAreQueued`, `TestRejectAndCancelEmails`, `TestVillageStatusEmails` |
+| Retry dengan backoff, lalu `failed` setelah 6 percobaan | `TestWorkerDeliversRetriesAndGivesUp` |
+| Email `sending` yang macet diambil ulang dengan `Message-ID` yang sama | `TestStaleSendingIsReclaimedWithSameMessageID` |
+| Empat worker bersamaan mengirim setiap email tepat satu kali | `TestConcurrentWorkersSendEachMessageOnce` |
+| Retensi 30 hari; akun dihapus tidak menyisakan email yang belum terkirim | `TestPurgeSentAndAccountData`, `TestDeletedAccountGetsNoQueuedMail` |
+| Header aman dari injeksi CR/LF; subjek non-ASCII dienkode RFC 2047 | `TestEnvelopeBytes`, `TestEnvelopeRejectsHeaderInjection` |
+| SMTP: AUTH PLAIN, dan menolak mengirim jika STARTTLS diwajibkan tetapi tidak tersedia | `TestSMTPTransport`, `TestSMTPRequiresStartTLSWhenConfigured` |
+| Semua template ter-render tanpa field yang hilang | `TestEmailTemplatesRender` |

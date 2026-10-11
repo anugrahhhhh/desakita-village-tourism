@@ -1,0 +1,19 @@
+{{define "subject"}}Pemesanan dikonfirmasi: {{.PackageName}}, {{.Date}}{{end}}
+{{define "body"}}
+Halo {{.TravelerName}},
+
+Kabar baik! Pengelola {{.VillageName}} mengonfirmasi pemesanan Anda.
+
+Paket     : {{.PackageName}}
+Desa      : {{.VillageName}}
+Tanggal   : {{.Date}}
+Jumlah    : {{.PartySize}} orang
+Perkiraan : {{.Total}}
+
+Pengelola akan menghubungi Anda untuk pembayaran dan detail kedatangan.
+
+Lihat pemesanan: {{.Link}}
+--
+Email ini dikirim otomatis oleh DesaKita karena ada perubahan pada pemesanan Anda.
+Pembayaran tidak pernah diminta lewat email; bayarlah langsung kepada pengelola desa.
+{{end}}

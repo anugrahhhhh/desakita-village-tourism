@@ -16,6 +16,7 @@ import (
 	"desakita/internal/db"
 	"desakita/internal/platform/audit"
 	"desakita/internal/platform/form"
+	outbox "desakita/internal/platform/mail"
 	"desakita/internal/platform/phone"
 )
 
@@ -198,6 +199,9 @@ func (s *Service) DeleteAccount(ctx context.Context, userID int64, password stri
 		}
 		if err := q.AnonymizeTravelerBookings(ctx, &userID); err != nil {
 			return fmt.Errorf("anonymize bookings: %w", err)
+		}
+		if err := outbox.PurgeUnsentTo(ctx, tx, row.Email); err != nil {
+			return err
 		}
 		if err := q.DeleteUser(ctx, userID); err != nil {
 			return fmt.Errorf("delete user: %w", err)

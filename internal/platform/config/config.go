@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/mail"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -22,6 +25,21 @@ type Config struct {
 	TrustProxy bool
 	// LogLevel is the minimum level written to the JSON log (LOG_LEVEL: debug|info|warn|error).
 	LogLevel slog.Level
+	// BaseURL is the public origin used for links in emails (APP_BASE_URL).
+	BaseURL string
+	Mail    Mail
+}
+
+// Mail configures outgoing email. Without SMTPHost, messages are written to Dir as .eml
+// files (development).
+type Mail struct {
+	From         *mail.Address
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUsername string
+	SMTPPassword string
+	SMTPTLS      string // starttls | tls | none
+	Dir          string
 }
 
 func (c Config) IsProduction() bool { return c.Env == "production" }
@@ -65,6 +83,27 @@ func Load(getenv func(string) string) (Config, error) {
 
 	if err := cfg.LogLevel.UnmarshalText([]byte(strings.ToUpper(get("LOG_LEVEL", "info")))); err != nil {
 		errs = append(errs, fmt.Errorf("LOG_LEVEL: %w", err))
+	}
+
+	cfg.BaseURL = strings.TrimRight(get("APP_BASE_URL", "http://localhost:8080"), "/")
+	if u, err := url.Parse(cfg.BaseURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		errs = append(errs, fmt.Errorf("APP_BASE_URL must be an absolute http(s) URL, got %q", cfg.BaseURL))
+	}
+	from, err := mail.ParseAddress(get("MAIL_FROM", "DesaKita <noreply@desakita.local>"))
+	if err != nil {
+		errs = append(errs, fmt.Errorf("MAIL_FROM: %w", err))
+	}
+	cfg.Mail = Mail{
+		From: from, SMTPHost: getenv("SMTP_HOST"), SMTPUsername: getenv("SMTP_USERNAME"),
+		SMTPPassword: getenv("SMTP_PASSWORD"), SMTPTLS: get("SMTP_TLS", "starttls"), Dir: get("MAIL_DIR", "./data/mail"),
+	}
+	port, err := strconv.Atoi(get("SMTP_PORT", "587"))
+	if err != nil || port < 1 || port > 65535 {
+		errs = append(errs, fmt.Errorf("SMTP_PORT must be a port number"))
+	}
+	cfg.Mail.SMTPPort = port
+	if t := cfg.Mail.SMTPTLS; t != "starttls" && t != "tls" && t != "none" {
+		errs = append(errs, fmt.Errorf("SMTP_TLS must be starttls, tls or none, got %q", t))
 	}
 
 	loc, err := time.LoadLocation(get("APP_TIMEZONE", "Asia/Jakarta"))
