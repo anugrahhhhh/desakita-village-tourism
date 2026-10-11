@@ -459,6 +459,91 @@ func (q *Queries) LockPackage(ctx context.Context, id int64) error {
 	return err
 }
 
+const searchPackages = `-- name: SearchPackages :many
+SELECT p.id, p.name, p.price_per_person_idr, p.duration_days, p.duration_nights,
+       v.name AS village_name, v.slug AS village_slug,
+       d.name AS district_name, r.name AS regency_name,
+       coalesce((SELECT m.path FROM media m WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1), '')::text AS cover_path
+FROM tour_packages p
+JOIN villages v ON v.id = p.village_id
+JOIN regions d ON d.id = v.district_id
+JOIN regions r ON r.id = d.parent_id
+WHERE p.is_active
+  AND v.status = 'verified'
+  AND ($1::bigint IS NULL OR r.id = $1::bigint)
+  AND ($2::bigint IS NULL OR EXISTS (
+        SELECT 1 FROM package_activity_types pa
+        WHERE pa.package_id = p.id AND pa.activity_type_id = $2::bigint))
+  AND ($3::bigint IS NULL OR p.price_per_person_idr >= $3::bigint)
+  AND ($4::bigint IS NULL OR p.price_per_person_idr <= $4::bigint)
+  AND ($5::text IS NULL OR p.name ILIKE $5::text OR v.name ILIKE $5::text)
+ORDER BY p.price_per_person_idr, p.id
+LIMIT $7 OFFSET $6
+`
+
+type SearchPackagesParams struct {
+	RegencyID      *int64
+	ActivityTypeID *int64
+	MinPrice       *int64
+	MaxPrice       *int64
+	Pattern        *string
+	PageOffset     int32
+	PageSize       int32
+}
+
+type SearchPackagesRow struct {
+	ID                int64
+	Name              string
+	PricePerPersonIdr int64
+	DurationDays      int16
+	DurationNights    int16
+	VillageName       string
+	VillageSlug       string
+	DistrictName      string
+	RegencyName       string
+	CoverPath         string
+}
+
+// Public search: only active packages of verified villages. NULL filters are ignored.
+func (q *Queries) SearchPackages(ctx context.Context, arg SearchPackagesParams) ([]SearchPackagesRow, error) {
+	rows, err := q.db.Query(ctx, searchPackages,
+		arg.RegencyID,
+		arg.ActivityTypeID,
+		arg.MinPrice,
+		arg.MaxPrice,
+		arg.Pattern,
+		arg.PageOffset,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchPackagesRow
+	for rows.Next() {
+		var i SearchPackagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.PricePerPersonIdr,
+			&i.DurationDays,
+			&i.DurationNights,
+			&i.VillageName,
+			&i.VillageSlug,
+			&i.DistrictName,
+			&i.RegencyName,
+			&i.CoverPath,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setPackageActive = `-- name: SetPackageActive :execrows
 UPDATE tour_packages SET is_active = $3, updated_at = now() WHERE id = $1 AND village_id = $2
 `

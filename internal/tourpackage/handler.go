@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/alexedwards/scs/v2"
@@ -45,7 +46,66 @@ func (h *Handler) ManageRoutes(r chi.Router) {
 }
 
 func (h *Handler) PublicRoutes(r chi.Router) {
+	r.Get("/", h.home)
 	r.Get("/desa/{slug}/paket/{packageID}", h.publicPage)
+}
+
+type homeData struct {
+	Filter        SearchFilter
+	Results       SearchPage
+	Regencies     []village.Regency
+	ActivityTypes []ActivityType
+	// Filtered is true when any filter is set (changes the heading and empty text).
+	Filtered bool
+	// PrevQuery / NextQuery are the query strings for pagination links.
+	PrevQuery, NextQuery string
+}
+
+// home is the landing page and package search.
+func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	f := SearchFilter{
+		Regency: q.Get("wilayah"), ActivityType: q.Get("kegiatan"),
+		MinPrice: q.Get("harga_min"), MaxPrice: q.Get("harga_maks"), Query: q.Get("q"), Page: q.Get("hal"),
+	}
+	results, err := h.svc.Search(r.Context(), f)
+	if err != nil {
+		h.rd.ServerError(w, r, err)
+		return
+	}
+	regencies, err := h.svc.villages.Regencies(r.Context())
+	if err != nil {
+		h.rd.ServerError(w, r, err)
+		return
+	}
+	types, err := h.svc.ActivityTypes(r.Context())
+	if err != nil {
+		h.rd.ServerError(w, r, err)
+		return
+	}
+	d := homeData{
+		Filter: f, Results: results, Regencies: regencies, ActivityTypes: types,
+		Filtered: f.Regency != "" || f.ActivityType != "" || f.MinPrice != "" || f.MaxPrice != "" || f.Query != "",
+	}
+	pageQuery := func(page int) string {
+		v := url.Values{}
+		for k, val := range map[string]string{"wilayah": f.Regency, "kegiatan": f.ActivityType, "harga_min": f.MinPrice, "harga_maks": f.MaxPrice, "q": f.Query} {
+			if val != "" {
+				v.Set(k, val)
+			}
+		}
+		if page > 1 {
+			v.Set("hal", strconv.Itoa(page))
+		}
+		return v.Encode()
+	}
+	if results.Page > 1 {
+		d.PrevQuery = pageQuery(results.Page - 1)
+	}
+	if results.HasNext {
+		d.NextQuery = pageQuery(results.Page + 1)
+	}
+	h.rd.Page(w, r, http.StatusOK, "home", d)
 }
 
 type ctxKey struct{}

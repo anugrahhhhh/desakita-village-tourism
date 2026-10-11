@@ -54,10 +54,12 @@ type Handler struct {
 	sm      *scs.SessionManager
 	rd      *render.Renderer
 	tr      *i18n.Translator
+	// CreateLimit wraps booking submission (rate limiting); set by internal/app.
+	CreateLimit httpx.Middleware
 }
 
 func NewHandler(svc *Service, catalog Catalog, sm *scs.SessionManager, rd *render.Renderer, tr *i18n.Translator) *Handler {
-	return &Handler{svc: svc, catalog: catalog, sm: sm, rd: rd, tr: tr}
+	return &Handler{svc: svc, catalog: catalog, sm: sm, rd: rd, tr: tr, CreateLimit: httpx.Pass}
 }
 
 // TravelerRoutes mounts the booking form and "Pemesanan saya".
@@ -65,7 +67,7 @@ func (h *Handler) TravelerRoutes(r chi.Router) {
 	r.Get("/pesan/paket/{packageID}", h.bookForm)
 	r.Group(func(r chi.Router) {
 		r.Use(httpx.RequireLogin)
-		r.Post("/pesan/paket/{packageID}", h.create)
+		r.With(h.CreateLimit).Post("/pesan/paket/{packageID}", h.create)
 		r.Get("/pemesanan", h.myBookings)
 		r.Get("/pemesanan/{bookingID}", h.myBooking)
 		r.Post("/pemesanan/{bookingID}/batal", h.travelerCancel)

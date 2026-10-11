@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -407,4 +408,119 @@ func Slugify(name string) string {
 		slug = "desa"
 	}
 	return slug
+}
+
+// ErrInvalidStatusChange means the village is not in a status the action applies to.
+var ErrInvalidStatusChange = errors.New("village: invalid status change")
+
+func (s *Service) setStatus(ctx context.Context, adminID, id int64, from []string, to, note string) error {
+	n, err := s.q.SetVillageStatus(ctx, db.SetVillageStatusParams{
+		ID: id, FromStatuses: from, ToStatus: to, ReviewNote: note, AdminID: &adminID,
+	})
+	if err != nil {
+		return fmt.Errorf("set village status: %w", err)
+	}
+	if n == 0 {
+		return ErrInvalidStatusChange
+	}
+	return nil
+}
+
+func reviewNote(note string, required bool) (string, error) {
+	note = strings.TrimSpace(note)
+	switch {
+	case required && note == "":
+		return "", form.Errors{"review_note": "validation.required"}.Err()
+	case utf8.RuneCountInString(note) > 1000:
+		return "", form.Errors{"review_note": "validation.too_long"}.Err()
+	}
+	return note, nil
+}
+
+// Verify makes a pending (or previously rejected) village public.
+func (s *Service) Verify(ctx context.Context, adminID, id int64) error {
+	return s.setStatus(ctx, adminID, id, []string{StatusPending, StatusRejected}, StatusVerified, "")
+}
+
+// Reject declines a pending registration; the reason is shown to the managers.
+func (s *Service) Reject(ctx context.Context, adminID, id int64, reason string) error {
+	note, err := reviewNote(reason, true)
+	if err != nil {
+		return err
+	}
+	return s.setStatus(ctx, adminID, id, []string{StatusPending}, StatusRejected, note)
+}
+
+// Suspend hides a verified village and blocks new bookings. Existing bookings are kept;
+// the admin contacts the managers directly (SPEC §5).
+func (s *Service) Suspend(ctx context.Context, adminID, id int64, reason string) error {
+	note, err := reviewNote(reason, false)
+	if err != nil {
+		return err
+	}
+	return s.setStatus(ctx, adminID, id, []string{StatusVerified}, StatusSuspended, note)
+}
+
+// Reinstate makes a suspended village public again.
+func (s *Service) Reinstate(ctx context.Context, adminID, id int64) error {
+	return s.setStatus(ctx, adminID, id, []string{StatusSuspended}, StatusVerified, "")
+}
+
+// AdminRow is a village in the admin queue.
+type AdminRow struct {
+	Summary
+	DistrictName, RegencyName string
+	CreatedAt                 time.Time
+}
+
+func (s *Service) ListByStatus(ctx context.Context, status string) ([]AdminRow, error) {
+	rows, err := s.q.ListVillagesByStatus(ctx, status)
+	if err != nil {
+		return nil, fmt.Errorf("list villages: %w", err)
+	}
+	out := make([]AdminRow, len(rows))
+	for i, r := range rows {
+		out[i] = AdminRow{
+			Summary:      Summary{ID: r.ID, Slug: r.Slug, Name: r.Name, Status: r.Status},
+			DistrictName: r.DistrictName, RegencyName: r.RegencyName, CreatedAt: r.CreatedAt,
+		}
+	}
+	return out, nil
+}
+
+type Manager struct {
+	ID                 int64
+	Name, Email, Phone string
+}
+
+func (s *Service) Managers(ctx context.Context, villageID int64) ([]Manager, error) {
+	rows, err := s.q.ListVillageManagers(ctx, villageID)
+	if err != nil {
+		return nil, fmt.Errorf("list managers: %w", err)
+	}
+	out := make([]Manager, len(rows))
+	for i, r := range rows {
+		out[i] = Manager{ID: r.ID, Name: r.Name, Email: r.Email}
+		if r.Phone != nil {
+			out[i].Phone = *r.Phone
+		}
+	}
+	return out, nil
+}
+
+type Regency struct {
+	ID             int64
+	Name, Province string
+}
+
+func (s *Service) Regencies(ctx context.Context) ([]Regency, error) {
+	rows, err := s.q.ListRegencies(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list regencies: %w", err)
+	}
+	out := make([]Regency, len(rows))
+	for i, r := range rows {
+		out[i] = Regency{ID: r.ID, Name: r.Name, Province: r.ProvinceName}
+	}
+	return out, nil
 }

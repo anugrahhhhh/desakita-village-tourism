@@ -464,3 +464,90 @@ func (s *Service) VillageSummaries(ctx context.Context, villageID int64) ([]Summ
 	}
 	return out, nil
 }
+
+// SearchPageSize is how many results the home page shows per page.
+const SearchPageSize = 24
+
+// SearchFilter holds the raw query-string filters; invalid values are ignored.
+type SearchFilter struct {
+	Regency, ActivityType, MinPrice, MaxPrice, Query, Page string
+}
+
+type SearchResult struct {
+	ID                           int64
+	Name                         string
+	PricePerPersonIDR            int64
+	DurationDays, DurationNights int16
+	VillageName, VillageSlug     string
+	DistrictName, RegencyName    string
+	CoverPath                    string
+}
+
+type SearchPage struct {
+	Results []SearchResult
+	Page    int
+	HasNext bool
+}
+
+func optionalID(s string) *int64 {
+	if n, err := strconv.ParseInt(strings.TrimSpace(s), 10, 64); err == nil && n > 0 {
+		return &n
+	}
+	return nil
+}
+
+func optionalPrice(s string) *int64 {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	if n, ok := parseRupiah(s); ok {
+		return &n
+	}
+	return nil
+}
+
+// likePattern escapes LIKE wildcards so user input matches literally.
+func likePattern(q string) *string {
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return nil
+	}
+	if utf8.RuneCountInString(q) > 100 {
+		q = string([]rune(q)[:100])
+	}
+	q = strings.NewReplacer(`\`, `\`, `%`, `\%`, `_`, `\_`).Replace(q)
+	p := "%" + q + "%"
+	return &p
+}
+
+// Search lists active packages of verified villages matching f, cheapest first.
+func (s *Service) Search(ctx context.Context, f SearchFilter) (SearchPage, error) {
+	page := 1
+	if n, err := strconv.Atoi(f.Page); err == nil && n > 1 && n <= 1000 {
+		page = n
+	}
+	rows, err := s.q.SearchPackages(ctx, db.SearchPackagesParams{
+		RegencyID:      optionalID(f.Regency),
+		ActivityTypeID: optionalID(f.ActivityType),
+		MinPrice:       optionalPrice(f.MinPrice),
+		MaxPrice:       optionalPrice(f.MaxPrice),
+		Pattern:        likePattern(f.Query),
+		PageSize:       SearchPageSize + 1, // one extra row tells us whether a next page exists
+		PageOffset:     int32((page - 1) * SearchPageSize),
+	})
+	if err != nil {
+		return SearchPage{}, fmt.Errorf("search packages: %w", err)
+	}
+	out := SearchPage{Page: page, HasNext: len(rows) > SearchPageSize}
+	if out.HasNext {
+		rows = rows[:SearchPageSize]
+	}
+	for _, r := range rows {
+		out.Results = append(out.Results, SearchResult{
+			ID: r.ID, Name: r.Name, PricePerPersonIDR: r.PricePerPersonIdr, DurationDays: r.DurationDays,
+			DurationNights: r.DurationNights, VillageName: r.VillageName, VillageSlug: r.VillageSlug,
+			DistrictName: r.DistrictName, RegencyName: r.RegencyName, CoverPath: r.CoverPath,
+		})
+	}
+	return out, nil
+}

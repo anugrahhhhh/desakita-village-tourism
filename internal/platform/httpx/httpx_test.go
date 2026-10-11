@@ -82,3 +82,39 @@ func TestRequireLogin(t *testing.T) {
 		}
 	})
 }
+
+func TestClientIP(t *testing.T) {
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.RemoteAddr = "10.0.0.5:4321"
+	r.Header.Set("X-Forwarded-For", "1.2.3.4, 9.9.9.9")
+	if got := ClientIP(r, false); got != "10.0.0.5" {
+		t.Errorf("untrusted proxy: %q, want RemoteAddr host", got)
+	}
+	if got := ClientIP(r, true); got != "9.9.9.9" {
+		t.Errorf("trusted proxy: %q, want last hop", got)
+	}
+	r.Header.Set("X-Real-IP", "8.8.8.8")
+	if got := ClientIP(r, true); got != "8.8.8.8" {
+		t.Errorf("X-Real-IP: %q", got)
+	}
+}
+
+func TestRequireAdmin(t *testing.T) {
+	notFound := func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNotFound) }
+	h := RequireAdmin(notFound)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+	for name, v := range map[string]*Viewer{"anonymous": nil, "user": {ID: 1}, "admin": {ID: 2, IsAdmin: true}} {
+		req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+		if v != nil {
+			req = req.WithContext(WithViewer(req.Context(), *v))
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		want := http.StatusNotFound
+		if name == "admin" {
+			want = http.StatusOK
+		}
+		if rec.Code != want {
+			t.Errorf("%s: %d, want %d", name, rec.Code, want)
+		}
+	}
+}

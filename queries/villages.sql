@@ -66,3 +66,35 @@ RETURNING id;
 
 -- name: DeleteVillageMedia :one
 DELETE FROM media WHERE id = $1 AND village_id = $2 RETURNING path;
+
+-- name: SetVillageStatus :execrows
+-- Guarded by the allowed source statuses so concurrent admin actions can't skip a step.
+UPDATE villages
+SET status = @to_status::text,
+    review_note = @review_note,
+    verified_by = CASE WHEN @to_status::text = 'verified' THEN sqlc.narg(admin_id)::bigint ELSE verified_by END,
+    verified_at = CASE WHEN @to_status::text = 'verified' THEN now() ELSE verified_at END,
+    updated_at = now()
+WHERE id = @id AND status = ANY(@from_statuses::text[]);
+
+-- name: ListVillagesByStatus :many
+SELECT v.id, v.slug, v.name, v.status, v.created_at, d.name AS district_name, r.name AS regency_name
+FROM villages v
+JOIN regions d ON d.id = v.district_id
+JOIN regions r ON r.id = d.parent_id
+WHERE v.status = $1
+ORDER BY v.created_at;
+
+-- name: ListVillageManagers :many
+SELECT u.id, u.name, u.email, u.phone
+FROM village_members m
+JOIN users u ON u.id = m.user_id
+WHERE m.village_id = $1
+ORDER BY u.name;
+
+-- name: ListRegencies :many
+SELECT r.id, r.name, p.name AS province_name
+FROM regions r
+JOIN regions p ON p.id = r.parent_id
+WHERE r.kind = 'regency'
+ORDER BY p.name, r.name;

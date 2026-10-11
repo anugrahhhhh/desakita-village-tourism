@@ -6,18 +6,22 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"desakita/internal/admin"
 	"desakita/internal/auth"
 	"desakita/internal/booking"
 	"desakita/internal/platform/config"
 	"desakita/internal/platform/csrf"
 	"desakita/internal/platform/httpx"
 	"desakita/internal/platform/i18n"
+	"desakita/internal/platform/ratelimit"
 	"desakita/internal/platform/render"
 	"desakita/internal/platform/session"
 	"desakita/internal/platform/upload"
@@ -88,8 +92,30 @@ func New(opts Options) (*App, error) {
 	})
 	bookingH := booking.NewHandler(bookingSvc, catalog{packageSvc, villageSvc}, sm, rd, tr)
 
+	adminSvc := admin.NewService(opts.Pool)
+	adminH := admin.NewHandler(adminSvc, villageSvc, sm, rd)
+
+	// Rate limits (SPEC §6). Keys use the client IP (proxy headers only if TRUST_PROXY) or
+	// the logged-in user.
+	tooMany := http.HandlerFunc(rd.TooManyRequests)
+	ip := func(r *http.Request) string { return httpx.ClientIP(r, opts.Config.TrustProxy) }
+	user := func(r *http.Request) string {
+		if v, ok := httpx.ViewerFrom(r.Context()); ok {
+			return "u:" + strconv.FormatInt(v.ID, 10)
+		}
+		return ""
+	}
+	loginPerAccount := ratelimit.New(time.Minute/5, 5).Middleware(func(r *http.Request) string {
+		return ip(r) + "|" + strings.ToLower(strings.TrimSpace(r.PostFormValue("email")))
+	}, tooMany)
+	loginPerIP := ratelimit.New(time.Minute/30, 30).Middleware(ip, tooMany)
+	authH.LoginLimit = func(next http.Handler) http.Handler { return loginPerIP(loginPerAccount(next)) }
+	authH.RegisterLimit = ratelimit.New(time.Hour/20, 20).Middleware(ip, tooMany)
+	bookingH.CreateLimit = ratelimit.New(time.Hour/10, 10).Middleware(user, tooMany)
+	adminH.ReportLimit = ratelimit.New(time.Hour/5, 5).Middleware(user, tooMany)
+
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer)
+	r.Use(middleware.RequestID, middleware.Recoverer, httpx.SecurityHeaders(opts.Config.IsProduction()))
 	r.NotFound(rd.NotFound)
 
 	static := http.StripPrefix("/static/", http.FileServerFS(web.Static()))
@@ -115,13 +141,16 @@ func New(opts Options) (*App, error) {
 		r.Use(csrf.Protect(sm, http.HandlerFunc(rd.Forbidden), http.HandlerFunc(rd.TooLarge)))
 		r.Use(authH.LoadViewer)
 
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			rd.Page(w, r, http.StatusOK, "home", nil)
-		})
 		authH.Routes(r)
 		villageH.PublicRoutes(r)
 		packageH.PublicRoutes(r)
 		bookingH.TravelerRoutes(r)
+		adminH.ReportRoutes(r)
+
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(httpx.RequireAdmin(rd.NotFound))
+			adminH.AdminRoutes(r)
+		})
 
 		r.Route("/kelola", func(r chi.Router) {
 			r.Use(httpx.RequireLogin)

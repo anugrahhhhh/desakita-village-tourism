@@ -1,0 +1,24 @@
+{{define "title"}}{{t "admin.reports"}}{{end}}
+{{define "content"}}
+{{$csrf := .CSRF}}
+<nav class="mb-4 text-sm"><a href="/admin" class="btn-link">{{t "admin.title"}}</a></nav>
+<h1 class="mb-6 text-2xl font-bold">{{t "admin.reports"}}</h1>
+<ul class="space-y-4">
+  {{range .Data.Reports}}
+    <li class="card space-y-3">
+      <p class="text-sm text-stone-600">{{date .CreatedAt}} · {{with .ReporterEmail}}{{.}}{{else}}{{t "admin.deleted_account"}}{{end}}</p>
+      <p>
+        {{if eq .TargetType "village"}}{{t "admin.target_village"}}: <a href="/desa/{{.VillageSlug}}" class="btn-link">{{.VillageName}}</a>
+        {{else}}{{t "admin.target_package"}}: <a href="/desa/{{.VillageSlug}}/paket/{{.TargetID}}" class="btn-link">{{.PackageName}}</a> ({{.VillageName}}){{end}}
+      </p>
+      <p class="whitespace-pre-line">{{.Reason}}</p>
+      <div class="flex flex-wrap gap-3">
+        <form method="post" action="/admin/laporan/{{.ID}}/selesai"><input type="hidden" name="csrf_token" value="{{$csrf}}"><button class="btn-primary">{{t "admin.report_resolve"}}</button></form>
+        <form method="post" action="/admin/laporan/{{.ID}}/abaikan"><input type="hidden" name="csrf_token" value="{{$csrf}}"><button class="btn-link">{{t "admin.report_dismiss"}}</button></form>
+      </div>
+    </li>
+  {{else}}
+    <li class="card text-stone-700">{{t "admin.no_reports"}}</li>
+  {{end}}
+</ul>
+{{end}}

@@ -21,4 +21,19 @@
     <a href="/pesan/paket/{{$p.ID}}" class="btn-primary mt-8 w-full sm:w-auto">{{t "package.book"}}</a>
   {{end}}
 </article>
+
+{{if and .Viewer (not .Data.Preview)}}
+  <details class="mt-10 text-sm text-stone-700">
+    <summary class="cursor-pointer">{{t "report.summary"}}</summary>
+    <form method="post" action="/lapor" class="mt-3 max-w-xl space-y-3">
+      <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      <input type="hidden" name="target_type" value="package">
+      <input type="hidden" name="target_id" value="{{.Data.Package.ID}}">
+      <input type="hidden" name="back" value="{{.Path}}">
+      <label for="reason" class="field-label">{{t "report.reason"}}</label>
+      <textarea id="reason" name="reason" rows="3" maxlength="1000" required class="field-input py-2"></textarea>
+      <button type="submit" class="btn-link text-red-800">{{t "report.submit"}}</button>
+    </form>
+  </details>
+{{end}}
 {{end}}

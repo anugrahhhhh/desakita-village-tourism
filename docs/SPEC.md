@@ -1,6 +1,6 @@
 # DesaKita — Spesifikasi MVP (Tahap 1)
 
-Status: Bagian 1–2 disetujui. Bagian 3–6 adalah **usulan** yang belum ditinjau.
+Status: Bagian 1–4 disetujui. Bagian 5–6 adalah **usulan** yang belum ditinjau, tetapi sudah diimplementasikan. Keputusan yang diambil selama implementasi dicatat di §9.
 
 ## 1. Tujuan dan konteks
 
@@ -286,3 +286,33 @@ Setiap tahap di-commit setelah tesnya lulus.
 - **Penipuan:** ditangani lewat verifikasi manual dan laporan pengguna.
 - **Beban admin:** dijaga dengan membatasi cakupan ke satu wilayah.
 - **Kuota bisa diborong:** dicegah dengan batas 3 `pending`, rate limit, dan kedaluwarsa 48 jam.
+
+## 9. Catatan implementasi (untuk ditinjau)
+
+Keputusan ini diambil selama implementasi tahap 1–6, karena spec belum mengaturnya.
+
+- **Paket:** tidak bisa dihapus, hanya dinonaktifkan, karena paket bisa sudah punya pemesanan.
+- **Slug desa:** tidak berubah walaupun nama desa diganti, supaya link yang sudah dibagikan tetap berfungsi.
+- **Foto:**
+  - Maksimal 12 foto per desa atau per paket.
+  - Diperkecil ke sisi terpanjang 1600 px.
+  - Rotasi diambil dari EXIF orientation sebelum EXIF dihapus.
+- **Tanggal yang ditutup:** permintaan `pending` di tanggal itu tetap bisa dikonfirmasi.
+- **Kedaluwarsa:**
+  - Penolakan tetap diizinkan setelah `expires_at` selama job kedaluwarsa belum memprosesnya. Kuota tetap dikembalikan tepat satu kali.
+  - Konfirmasi ditolak begitu `expires_at` lewat.
+- **Kalender pengelola:** kuota dan buka/tutup hanya bisa diubah untuk rentang hari ini s.d. +90 hari.
+- **Pembatalan:** tombol pengelola untuk permintaan `pending` adalah "Tolak". Tombol "Batalkan" untuk pengelola hanya muncul pada pemesanan `confirmed`.
+- **Nomor WhatsApp:** nomor yang diawali `8` (tanpa `0`) juga dinormalisasi ke `62…`.
+- **Rate limit** (in-memory, per instance):
+
+  | Aksi | Batas |
+  |---|---|
+  | login | 5/menit per IP+email dan 30/menit per IP |
+  | daftar | 20/jam per IP |
+  | kirim pemesanan | 10/jam per akun |
+  | laporan | 5/jam per akun |
+
+- **IP klien:** `X-Forwarded-For`/`X-Real-IP` hanya dipercaya jika `TRUST_PROXY=true`.
+- **Admin:** suspend tidak membatalkan pemesanan yang ada. Desa yang ditolak bisa langsung diverifikasi jika datanya sudah diperbaiki.
+- **Pencarian:** pencarian teks sederhana (`ILIKE` pada nama paket dan nama desa) ditambahkan di samping filter daerah, jenis kegiatan, dan harga.

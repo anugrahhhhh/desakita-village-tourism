@@ -34,3 +34,6 @@ WHERE traveler_id = $1;
 -- bookings.traveler_id and reports.reporter_id are cleared by ON DELETE SET NULL.
 DELETE FROM users WHERE id = $1;
 
+
+-- name: PromoteAdmin :execrows
+UPDATE users SET is_admin = true, updated_at = now() WHERE email = $1;

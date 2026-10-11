@@ -18,18 +18,20 @@ type Handler struct {
 	svc *Service
 	sm  *scs.SessionManager
 	rd  *render.Renderer
+	// LoginLimit and RegisterLimit wrap the POST handlers (rate limiting); set by internal/app.
+	LoginLimit, RegisterLimit httpx.Middleware
 }
 
 func NewHandler(svc *Service, sm *scs.SessionManager, rd *render.Renderer) *Handler {
-	return &Handler{svc: svc, sm: sm, rd: rd}
+	return &Handler{svc: svc, sm: sm, rd: rd, LoginLimit: httpx.Pass, RegisterLimit: httpx.Pass}
 }
 
 // Routes mounts the auth pages. The caller applies session, CSRF and LoadViewer first.
 func (h *Handler) Routes(r chi.Router) {
 	r.Get("/daftar", h.registerForm)
-	r.Post("/daftar", h.register)
+	r.With(h.RegisterLimit).Post("/daftar", h.register)
 	r.Get("/masuk", h.loginForm)
-	r.Post("/masuk", h.login)
+	r.With(h.LoginLimit).Post("/masuk", h.login)
 	r.Post("/keluar", h.logout)
 	r.Group(func(r chi.Router) {
 		r.Use(httpx.RequireLogin)

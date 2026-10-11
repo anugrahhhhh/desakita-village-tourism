@@ -15,6 +15,9 @@ type Config struct {
 	UploadDir         string
 	BookingPendingTTL time.Duration
 	Location          *time.Location
+	// TrustProxy: take the client IP from X-Real-IP/X-Forwarded-For. Enable only behind a
+	// reverse proxy that sets these headers itself.
+	TrustProxy bool
 }
 
 func (c Config) IsProduction() bool { return c.Env == "production" }
@@ -36,6 +39,7 @@ func Load(getenv func(string) string) (Config, error) {
 		HTTPAddr:    get("HTTP_ADDR", ":8080"),
 		DatabaseURL: getenv("DATABASE_URL"),
 		UploadDir:   get("UPLOAD_DIR", "./data/uploads"),
+		TrustProxy:  getenv("TRUST_PROXY") == "true",
 	}
 
 	var errs []error

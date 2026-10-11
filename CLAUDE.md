@@ -10,6 +10,7 @@ go run ./cmd/desakita migrate up     # apply migrations
 go run ./cmd/desakita migrate down 1 # roll back one
 go run ./cmd/desakita seed           # idempotent dev seed (placeholder regions only)
 go run ./cmd/desakita serve          # http://localhost:8080, /healthz pings the DB
+go run ./cmd/desakita promote-admin EMAIL  # grant admin to an existing account (no web UI for this)
 sqlc generate                        # after editing queries/ or migrations/ (sqlc v1.29.0)
 npm install && npm run build:css     # rebuild web/static/app.css after template/class changes (output is committed)
 npm run vendor:htmx                  # copy pinned htmx into web/static (committed)
@@ -41,3 +42,7 @@ wsl.exe -d Ubuntu -- bash -lc 'cd "/mnt/c/Users/ASUS/project golang 2" && TEST_D
 - Integration tests use `dbtest.New(t)`, which gives a fresh database cloned from a migrated template. Never point tests at the dev database.
 - Code, identifiers and comments are in English. UI text goes through i18n (Indonesian only for now). Docs are in Indonesian.
 - Never log passwords, booking notes or phone numbers.
+- Client IP comes from `httpx.ClientIP`. Proxy headers are trusted only with `TRUST_PROXY=true`. Never reintroduce chi's `middleware.RealIP`, because it lets clients spoof their IP past rate limits.
+- Rate limits are wired in `internal/app` through handler hooks (`LoginLimit`, `RegisterLimit`, `CreateLimit`, `ReportLimit`). They are in-memory, which is enough for a single instance.
+- `/admin` answers 404 to non-admins (`httpx.RequireAdmin`). Village status changes go through `village.Service` (Verify/Reject/Suspend/Reinstate) with guarded UPDATEs.
+- Keep CSP strict (`script-src 'self'`, `style-src 'self'`): no inline scripts or styles. htmx indicator styles are disabled via the `htmx-config` meta tag.

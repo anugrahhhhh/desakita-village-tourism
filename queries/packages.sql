@@ -88,3 +88,25 @@ FROM tour_packages p
 JOIN villages v ON v.id = p.village_id
 WHERE p.village_id = $1
 ORDER BY p.is_active DESC, p.name;
+
+-- name: SearchPackages :many
+-- Public search: only active packages of verified villages. NULL filters are ignored.
+SELECT p.id, p.name, p.price_per_person_idr, p.duration_days, p.duration_nights,
+       v.name AS village_name, v.slug AS village_slug,
+       d.name AS district_name, r.name AS regency_name,
+       coalesce((SELECT m.path FROM media m WHERE m.package_id = p.id ORDER BY m.sort_order, m.id LIMIT 1), '')::text AS cover_path
+FROM tour_packages p
+JOIN villages v ON v.id = p.village_id
+JOIN regions d ON d.id = v.district_id
+JOIN regions r ON r.id = d.parent_id
+WHERE p.is_active
+  AND v.status = 'verified'
+  AND (sqlc.narg(regency_id)::bigint IS NULL OR r.id = sqlc.narg(regency_id)::bigint)
+  AND (sqlc.narg(activity_type_id)::bigint IS NULL OR EXISTS (
+        SELECT 1 FROM package_activity_types pa
+        WHERE pa.package_id = p.id AND pa.activity_type_id = sqlc.narg(activity_type_id)::bigint))
+  AND (sqlc.narg(min_price)::bigint IS NULL OR p.price_per_person_idr >= sqlc.narg(min_price)::bigint)
+  AND (sqlc.narg(max_price)::bigint IS NULL OR p.price_per_person_idr <= sqlc.narg(max_price)::bigint)
+  AND (sqlc.narg(pattern)::text IS NULL OR p.name ILIKE sqlc.narg(pattern)::text OR v.name ILIKE sqlc.narg(pattern)::text)
+ORDER BY p.price_per_person_idr, p.id
+LIMIT @page_size OFFSET @page_offset;

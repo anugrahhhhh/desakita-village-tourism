@@ -175,6 +175,11 @@ func (rd *Renderer) TooLarge(w http.ResponseWriter, r *http.Request) {
 	rd.errorPage(w, r, http.StatusRequestEntityTooLarge, ErrorData{TitleKey: "error.too_large.title", MessageKey: "error.too_large.message"})
 }
 
+func (rd *Renderer) TooManyRequests(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Retry-After", "60")
+	rd.errorPage(w, r, http.StatusTooManyRequests, ErrorData{TitleKey: "error.rate_limited.title", MessageKey: "error.rate_limited.message"})
+}
+
 // ServerError logs err with the request ID and shows a generic page; details never reach the user.
 func (rd *Renderer) ServerError(w http.ResponseWriter, r *http.Request, err error) {
 	reqID := middleware.GetReqID(r.Context())

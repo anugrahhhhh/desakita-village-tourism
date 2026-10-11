@@ -287,6 +287,80 @@ func (q *Queries) ListDistricts(ctx context.Context) ([]ListDistrictsRow, error)
 	return items, nil
 }
 
+const listRegencies = `-- name: ListRegencies :many
+SELECT r.id, r.name, p.name AS province_name
+FROM regions r
+JOIN regions p ON p.id = r.parent_id
+WHERE r.kind = 'regency'
+ORDER BY p.name, r.name
+`
+
+type ListRegenciesRow struct {
+	ID           int64
+	Name         string
+	ProvinceName string
+}
+
+func (q *Queries) ListRegencies(ctx context.Context) ([]ListRegenciesRow, error) {
+	rows, err := q.db.Query(ctx, listRegencies)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRegenciesRow
+	for rows.Next() {
+		var i ListRegenciesRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.ProvinceName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVillageManagers = `-- name: ListVillageManagers :many
+SELECT u.id, u.name, u.email, u.phone
+FROM village_members m
+JOIN users u ON u.id = m.user_id
+WHERE m.village_id = $1
+ORDER BY u.name
+`
+
+type ListVillageManagersRow struct {
+	ID    int64
+	Name  string
+	Email string
+	Phone *string
+}
+
+func (q *Queries) ListVillageManagers(ctx context.Context, villageID int64) ([]ListVillageManagersRow, error) {
+	rows, err := q.db.Query(ctx, listVillageManagers, villageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVillageManagersRow
+	for rows.Next() {
+		var i ListVillageManagersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.Phone,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listVillageMedia = `-- name: ListVillageMedia :many
 SELECT id, path FROM media WHERE village_id = $1 ORDER BY sort_order, id
 `
@@ -306,6 +380,53 @@ func (q *Queries) ListVillageMedia(ctx context.Context, villageID *int64) ([]Lis
 	for rows.Next() {
 		var i ListVillageMediaRow
 		if err := rows.Scan(&i.ID, &i.Path); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVillagesByStatus = `-- name: ListVillagesByStatus :many
+SELECT v.id, v.slug, v.name, v.status, v.created_at, d.name AS district_name, r.name AS regency_name
+FROM villages v
+JOIN regions d ON d.id = v.district_id
+JOIN regions r ON r.id = d.parent_id
+WHERE v.status = $1
+ORDER BY v.created_at
+`
+
+type ListVillagesByStatusRow struct {
+	ID           int64
+	Slug         string
+	Name         string
+	Status       string
+	CreatedAt    time.Time
+	DistrictName string
+	RegencyName  string
+}
+
+func (q *Queries) ListVillagesByStatus(ctx context.Context, status string) ([]ListVillagesByStatusRow, error) {
+	rows, err := q.db.Query(ctx, listVillagesByStatus, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVillagesByStatusRow
+	for rows.Next() {
+		var i ListVillagesByStatusRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Name,
+			&i.Status,
+			&i.CreatedAt,
+			&i.DistrictName,
+			&i.RegencyName,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -365,6 +486,39 @@ SELECT 1 FROM villages WHERE id = $1 FOR UPDATE
 func (q *Queries) LockVillage(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, lockVillage, id)
 	return err
+}
+
+const setVillageStatus = `-- name: SetVillageStatus :execrows
+UPDATE villages
+SET status = $1::text,
+    review_note = $2,
+    verified_by = CASE WHEN $1::text = 'verified' THEN $3::bigint ELSE verified_by END,
+    verified_at = CASE WHEN $1::text = 'verified' THEN now() ELSE verified_at END,
+    updated_at = now()
+WHERE id = $4 AND status = ANY($5::text[])
+`
+
+type SetVillageStatusParams struct {
+	ToStatus     string
+	ReviewNote   string
+	AdminID      *int64
+	ID           int64
+	FromStatuses []string
+}
+
+// Guarded by the allowed source statuses so concurrent admin actions can't skip a step.
+func (q *Queries) SetVillageStatus(ctx context.Context, arg SetVillageStatusParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setVillageStatus,
+		arg.ToStatus,
+		arg.ReviewNote,
+		arg.AdminID,
+		arg.ID,
+		arg.FromStatuses,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateVillageProfile = `-- name: UpdateVillageProfile :execrows

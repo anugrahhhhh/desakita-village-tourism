@@ -4,6 +4,7 @@
 //	desakita migrate up         apply all pending migrations
 //	desakita migrate down [N]   roll back N migrations (default 1)
 //	desakita seed               load idempotent development seed data
+//	desakita promote-admin EMAIL  grant admin rights to an existing account
 package main
 
 import (
@@ -22,6 +23,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"desakita/internal/app"
+	"desakita/internal/auth"
 	"desakita/internal/platform/config"
 	"desakita/internal/platform/database"
 )
@@ -62,8 +64,26 @@ func run(logger *slog.Logger, args []string) error {
 		}
 		defer pool.Close()
 		return database.Seed(ctx, pool)
+	case "promote-admin":
+		if len(args) != 1 {
+			return errors.New("usage: promote-admin EMAIL")
+		}
+		pool, err := database.Open(ctx, cfg.DatabaseURL)
+		if err != nil {
+			return err
+		}
+		defer pool.Close()
+		svc, err := auth.NewService(pool)
+		if err != nil {
+			return err
+		}
+		if err := svc.PromoteAdmin(ctx, args[0]); err != nil {
+			return fmt.Errorf("promote %s: %w", args[0], err)
+		}
+		logger.Info("promoted to admin", "email", args[0])
+		return nil
 	default:
-		return fmt.Errorf("unknown command %q (want serve, migrate, seed)", cmd)
+		return fmt.Errorf("unknown command %q (want serve, migrate, seed, promote-admin)", cmd)
 	}
 }
 

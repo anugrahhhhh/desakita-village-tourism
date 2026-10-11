@@ -149,6 +149,18 @@ func (s *Service) UserByID(ctx context.Context, id int64) (User, error) {
 	return fromRow(row), nil
 }
 
+// PromoteAdmin grants admin rights to the account with email (CLI only).
+func (s *Service) PromoteAdmin(ctx context.Context, email string) error {
+	n, err := s.q.PromoteAdmin(ctx, strings.TrimSpace(email))
+	if err != nil {
+		return fmt.Errorf("promote admin: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // DeleteAccount removes the user after re-checking the password. It refuses while the user
 // is the last manager of any village. The user's bookings stay for the village's records
 // but lose note and contact details.

@@ -1,6 +1,67 @@
 {{define "content"}}
-<section class="py-10">
+{{$d := .Data}}{{$f := $d.Filter}}
+<section class="py-6">
   <h1 class="text-3xl font-bold text-brand-900">{{t "home.heading"}}</h1>
   <p class="mt-3 max-w-2xl text-lg text-stone-700">{{t "home.lead"}}</p>
 </section>
+
+<form method="get" action="/" class="card mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5" role="search">
+  <div class="lg:col-span-2">
+    <label for="q" class="field-label">{{t "search.query"}}</label>
+    <input id="q" name="q" maxlength="100" class="field-input" value="{{$f.Query}}" placeholder="{{t "search.query_hint"}}">
+  </div>
+  <div>
+    <label for="wilayah" class="field-label">{{t "search.regency"}}</label>
+    <select id="wilayah" name="wilayah" class="field-input">
+      <option value="">{{t "search.all"}}</option>
+      {{range $d.Regencies}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $f.Regency}}selected{{end}}>{{.Name}}, {{.Province}}</option>{{end}}
+    </select>
+  </div>
+  <div>
+    <label for="kegiatan" class="field-label">{{t "search.activity"}}</label>
+    <select id="kegiatan" name="kegiatan" class="field-input">
+      <option value="">{{t "search.all"}}</option>
+      {{range $d.ActivityTypes}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $f.ActivityType}}selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+  </div>
+  <div class="grid grid-cols-2 gap-2">
+    <div>
+      <label for="harga_min" class="field-label">{{t "search.min_price"}}</label>
+      <input id="harga_min" name="harga_min" inputmode="numeric" class="field-input" value="{{$f.MinPrice}}">
+    </div>
+    <div>
+      <label for="harga_maks" class="field-label">{{t "search.max_price"}}</label>
+      <input id="harga_maks" name="harga_maks" inputmode="numeric" class="field-input" value="{{$f.MaxPrice}}">
+    </div>
+  </div>
+  <div class="flex flex-wrap items-center gap-4 sm:col-span-2 lg:col-span-5">
+    <button type="submit" class="btn-primary">{{t "search.submit"}}</button>
+    {{if $d.Filtered}}<a href="/" class="btn-link">{{t "search.reset"}}</a>{{end}}
+  </div>
+</form>
+
+<h2 class="mb-4 text-2xl font-bold">{{if $d.Filtered}}{{t "search.results"}}{{else}}{{t "search.all_packages"}}{{end}}</h2>
+<ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {{range $d.Results.Results}}
+    <li>
+      <a href="/desa/{{.VillageSlug}}/paket/{{.ID}}" class="card block h-full overflow-hidden p-0 hover:border-brand-600">
+        {{if .CoverPath}}<img src="/media/{{.CoverPath}}" alt="" class="aspect-[4/3] w-full object-cover" loading="lazy">
+        {{else}}<div class="aspect-[4/3] w-full bg-brand-50" aria-hidden="true"></div>{{end}}
+        <div class="p-4">
+          <h3 class="font-semibold">{{.Name}}</h3>
+          <p class="text-sm text-stone-700">{{.VillageName}} · {{.DistrictName}}, {{.RegencyName}}</p>
+          <p class="mt-2"><strong>{{rupiah .PricePerPersonIDR}}</strong> {{t "package.per_person"}} · {{template "duration" .}}</p>
+        </div>
+      </a>
+    </li>
+  {{else}}
+    <li class="card text-stone-700 sm:col-span-2 lg:col-span-3">{{if $d.Filtered}}{{t "search.empty"}}{{else}}{{t "search.no_packages_yet"}}{{end}}</li>
+  {{end}}
+</ul>
+{{if or $d.PrevQuery $d.NextQuery}}
+  <nav class="mt-6 flex justify-between" aria-label="{{t "search.pagination"}}">
+    {{if $d.PrevQuery}}<a href="/?{{$d.PrevQuery}}" class="btn-link">‹ {{t "search.prev"}}</a>{{else}}<span></span>{{end}}
+    {{if $d.NextQuery}}<a href="/?{{$d.NextQuery}}" class="btn-link">{{t "search.next"}} ›</a>{{end}}
+  </nav>
+{{end}}
 {{end}}

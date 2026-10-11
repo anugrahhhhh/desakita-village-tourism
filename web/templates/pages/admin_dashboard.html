@@ -1,0 +1,23 @@
+{{define "title"}}{{t "admin.title"}}{{end}}
+{{define "content"}}
+{{$d := .Data}}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+  <h1 class="text-2xl font-bold">{{t "admin.title"}}</h1>
+  <a href="/admin/laporan" class="btn-primary">{{t "admin.reports"}} ({{$d.OpenReports}})</a>
+</div>
+<nav class="mb-6 flex flex-wrap gap-2" aria-label="{{t "admin.filter"}}">
+  {{range $d.Tabs}}
+    <a href="/admin?status={{.}}" class="inline-flex min-h-10 items-center rounded-full border px-4 text-sm {{if eq . $d.Status}}border-brand-700 bg-brand-600 text-white{{else}}border-stone-300 bg-white{{end}}">{{t (printf "village.status.%s" .)}}</a>
+  {{end}}
+</nav>
+<ul class="space-y-3">
+  {{range $d.Villages}}
+    <li><a href="/admin/desa/{{.ID}}" class="card flex flex-wrap items-center justify-between gap-2 hover:border-brand-600">
+      <span><strong>{{.Name}}</strong> · {{.DistrictName}}, {{.RegencyName}}</span>
+      <span class="text-sm text-stone-600">{{t "admin.registered"}} {{date .CreatedAt}}</span>
+    </a></li>
+  {{else}}
+    <li class="card text-stone-700">{{t "admin.empty"}}</li>
+  {{end}}
+</ul>
+{{end}}
