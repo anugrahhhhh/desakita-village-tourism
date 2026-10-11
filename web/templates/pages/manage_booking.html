@@ -3,12 +3,9 @@
 {{$d := .Data}}{{$b := $d.Row}}{{$csrf := .CSRF}}
 {{$base := printf "/kelola/desa/%d/pemesanan/%d" $b.VillageID $b.ID}}
 <div class="mx-auto max-w-2xl space-y-6">
-  <nav class="flex flex-wrap items-center gap-x-2 text-sm">
-    <a href="/kelola/desa/{{$b.VillageID}}" class="btn-link">{{$b.Package.VillageName}}</a><span aria-hidden="true">›</span>
-    <a href="/kelola/desa/{{$b.VillageID}}/pemesanan" class="btn-link">{{t "manage.bookings.title"}}</a>
-  </nav>
+  {{template "crumbs" (crumbs "/kelola" (t "manage.nav.all_villages") (printf "/kelola/desa/%d" $b.VillageID) $b.Package.VillageName (printf "/kelola/desa/%d/pemesanan" $b.VillageID) (t "manage.bookings.title") "" (t "booking.detail.title" $b.ID))}}
   <div class="flex flex-wrap items-center gap-3">
-    <h1 class="text-2xl font-bold">{{t "booking.detail.title" $b.ID}}</h1>
+    <h1 class="page-title">{{t "booking.detail.title" $b.ID}}</h1>
     {{template "booking_status" $b.Status}}
   </div>
   {{if eq $b.Status "pending"}}
@@ -18,7 +15,7 @@
   <section class="card space-y-4">
     <dl class="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-3">
       <dt class="font-semibold">{{t "booking.field.contact_name"}}</dt><dd class="sm:col-span-2">{{$b.ContactName}}</dd>
-      {{with $b.ContactPhone}}<dt class="font-semibold">{{t "booking.field.contact_phone"}}</dt><dd class="sm:col-span-2"><a href="tel:{{.}}" class="btn-link">{{.}}</a></dd>{{end}}
+      {{with $b.ContactPhone}}<dt class="font-semibold">{{t "booking.field.contact_phone"}}</dt><dd class="sm:col-span-2"><a href="tel:{{.}}" class="font-semibold text-brand-700 underline decoration-2 underline-offset-4 hover:text-brand-900">{{.}}</a></dd>{{end}}
     </dl>
     {{template "booking_facts" $b}}
     {{with $d.WALink}}<a href="{{.}}" target="_blank" rel="noopener" class="btn-primary">{{t "booking.wa.notify_traveler"}}</a>{{end}}
@@ -27,16 +24,16 @@
   {{if $d.Actions.Any}}
     <section class="card space-y-4">
       <h2 class="text-lg font-bold">{{t "manage.booking.actions"}}</h2>
-      <div class="flex flex-wrap gap-3">
+      {{if or $d.Actions.Confirm $d.Actions.Complete}}<div class="flex flex-wrap gap-3">
         {{if $d.Actions.Confirm}}
           <form method="post" action="{{$base}}/konfirmasi"><input type="hidden" name="csrf_token" value="{{$csrf}}"><button class="btn-primary">{{t "manage.booking.confirm"}}</button></form>
         {{end}}
         {{if $d.Actions.Complete}}
           <form method="post" action="{{$base}}/selesai"><input type="hidden" name="csrf_token" value="{{$csrf}}"><button class="btn-primary">{{t "manage.booking.complete"}}</button></form>
         {{end}}
-      </div>
+      </div>{{end}}
       {{if or $d.Actions.Reject $d.Actions.Cancel}}
-        <form method="post" class="space-y-3 border-t border-stone-200 pt-4">
+        <form method="post" class="space-y-3 {{if or $d.Actions.Confirm $d.Actions.Complete}}border-t border-stone-200 pt-4{{end}}">
           <input type="hidden" name="csrf_token" value="{{$csrf}}">
           <label for="note" class="field-label">{{t "manage.booking.reason_optional"}}</label>
           <textarea id="note" name="note" rows="2" maxlength="500" class="field-input py-2"></textarea>

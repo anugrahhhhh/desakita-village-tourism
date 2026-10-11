@@ -1,17 +1,18 @@
 {{define "title"}}{{t "booking.mine.title"}}{{end}}
 {{define "content"}}
-<h1 class="mb-6 text-2xl font-bold">{{t "booking.mine.title"}}</h1>
+<h1 class="page-title mb-6">{{t "booking.mine.title"}}</h1>
 <ul class="space-y-4">
   {{range .Data.Rows}}
     <li>
-      <a href="/pemesanan/{{.ID}}" class="card block hover:border-brand-600">
-        <div class="flex flex-wrap items-start justify-between gap-3">
-          <div>
+      <a href="/pemesanan/{{.ID}}" class="row-link">
+        <div class="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-3">
+          <div class="min-w-0">
             <h2 class="font-semibold">{{.Package.Name}}</h2>
             <p class="text-stone-700">{{.Package.VillageName}} · {{date .StartDate}} · {{t "booking.people" .PartySize}}</p>
           </div>
           {{template "booking_status" .Status}}
         </div>
+        {{template "row_chevron"}}
       </a>
     </li>
   {{else}}

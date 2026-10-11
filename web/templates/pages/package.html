@@ -17,7 +17,7 @@
     <div class="grid gap-2 lg:grid-cols-4">
       {{range $i, $ph := $photos}}{{if eq $i 0}}
         <img src="/media/{{$ph.Path}}" alt="{{$ph.Alt $p.Name}}" width="{{$ph.Width}}" height="{{$ph.Height}}" loading="lazy"
-             class="aspect-[4/3] w-full object-cover sm:rounded-2xl {{if gt (len $photos) 1}}lg:col-span-3{{else}}lg:col-span-4 lg:aspect-[21/9]{{end}}">
+             class="aspect-[4/3] w-full object-cover sm:rounded-2xl {{if gt (len $photos) 1}}lg:col-span-3 lg:aspect-[16/9]{{else}}lg:col-span-4 lg:aspect-[5/2]{{end}}">
       {{end}}{{end}}
       {{if gt (len $photos) 1}}
         <ul class="flex snap-x gap-2 overflow-x-auto px-4 pb-1 sm:px-0 lg:col-span-1 lg:flex-col lg:overflow-visible lg:p-0">
@@ -42,10 +42,9 @@
         <span><strong>{{decimal1 .Data.Summary.Average}}</strong> · <span class="underline underline-offset-4">{{t "review.count" .Data.Summary.Count}}</span></span>
       </a>
     {{end}}
-    <p class="mt-2 flex flex-wrap items-center gap-x-1.5 text-stone-700">
-      <span class="icon size-5 text-clay-700">{{template "i-map-pin"}}</span>
-      <a href="/desa/{{$v.Slug}}" class="inline-flex min-h-11 items-center font-semibold text-stone-800 underline decoration-stone-300 underline-offset-4 hover:text-brand-800">{{$v.Name}}</a>
-      <span>· {{$v.DistrictName}}, {{$v.RegencyName}}</span>
+    <p class="mt-2 flex items-start gap-1.5 text-stone-700">
+      <span class="icon mt-3 size-5 shrink-0 text-clay-700">{{template "i-map-pin"}}</span>
+      <span><a href="/desa/{{$v.Slug}}" class="inline-flex min-h-11 items-center font-semibold text-stone-800 underline decoration-stone-300 underline-offset-4 hover:text-brand-800">{{$v.Name}}</a> <span class="whitespace-nowrap">· {{$v.DistrictName}},</span> <span class="whitespace-nowrap">{{$v.RegencyName}}</span></span>
     </p>
 
     <ul class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -65,7 +64,7 @@
 
     {{with .Data.ActivityTypes}}
       <ul class="mt-4 flex flex-wrap gap-2" aria-label="{{t "package.field.activity_types"}}">
-        {{range .}}<li class="badge bg-brand-50 text-brand-900"><span class="icon size-4">{{template "i-leaf"}}</span>{{.Name}}</li>{{end}}
+        {{range .}}<li class="badge bg-brand-50 text-brand-900"><span class="icon size-4">{{template "i-leaf"}}</span>{{activity .Slug .Name}}</li>{{end}}
       </ul>
     {{end}}
 

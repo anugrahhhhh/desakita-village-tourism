@@ -1,8 +1,12 @@
 {{define "title"}}{{t "auth.register.title"}}{{end}}
 {{define "content"}}
-<div class="mx-auto max-w-md">
-  <h1 class="mb-6 text-2xl font-bold">{{t "auth.register.title"}}</h1>
-  <form method="post" action="/daftar" class="card space-y-5" novalidate>
+<div class="mx-auto max-w-md py-4 sm:py-8">
+  <div class="mb-6 text-center">
+    <span class="icon mx-auto size-12 rounded-2xl bg-brand-700 p-2.5 text-white">{{template "i-sprout"}}</span>
+    <h1 class="page-title mt-4">{{t "auth.register.title"}}</h1>
+    <p class="mt-1.5 text-stone-700">{{t "auth.register.lead"}}</p>
+  </div>
+  <form method="post" action="/daftar" class="card space-y-5 p-6 sm:p-8" novalidate>
     <input type="hidden" name="csrf_token" value="{{.CSRF}}">
     <input type="hidden" name="next" value="{{.Data.Next}}">
     <div>
@@ -28,7 +32,7 @@
       {{with index .Data.Errors "password"}}<p class="field-error">{{t .}}</p>{{end}}
     </div>
     <button type="submit" class="btn-primary w-full">{{t "auth.register.submit"}}</button>
-    <p class="text-sm text-stone-700">{{t "auth.register.has_account"}} <a href="/masuk{{with .Data.Next}}?next={{.}}{{end}}" class="btn-link">{{t "nav.login"}}</a></p>
+    <p class="border-t border-stone-200 pt-5 text-center text-sm text-stone-700">{{t "auth.register.has_account"}} <a href="/masuk{{with .Data.Next}}?next={{.}}{{end}}" class="btn-link">{{t "nav.login"}}</a></p>
   </form>
 </div>
 {{end}}

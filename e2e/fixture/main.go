@@ -176,7 +176,7 @@ func seedDemo(ctx context.Context, pool *pgxpool.Pool, uploads string) error {
 	packages := tourpackage.NewService(pool, villages, store, logger)
 
 	var district int64
-	if err := pool.QueryRow(ctx, "SELECT id FROM regions WHERE kind = 'district' ORDER BY name LIMIT 1").Scan(&district); err != nil {
+	if err := pool.QueryRow(ctx, "SELECT id FROM regions WHERE kind = 'district' AND name = 'Kraton'").Scan(&district); err != nil {
 		return err
 	}
 	vid, err := villages.Create(ctx, manager.ID, village.ProfileInput{

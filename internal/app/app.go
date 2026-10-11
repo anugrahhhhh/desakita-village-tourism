@@ -100,6 +100,9 @@ func New(opts Options) (*App, error) {
 		return nil, err
 	}
 	rd.SetLocation(opts.Config.Location)
+	if err := rd.SetStatic(web.Static()); err != nil {
+		return nil, err
+	}
 	rd.SetMap(render.MapConfig{
 		Tiles: "/tiles/{z}/{x}/{y}.png", MaxZoom: tiles.MaxZoom,
 		AttributionText: opts.Config.Map.AttributionText, AttributionURL: opts.Config.Map.AttributionURL,
@@ -183,7 +186,13 @@ func New(opts Options) (*App, error) {
 
 	static := http.StripPrefix("/static/", http.FileServerFS(web.Static()))
 	r.Handle("/static/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "public, max-age=3600")
+		// Versioned URLs ({{asset}} adds ?v=<content hash>) never change content, so browsers
+		// may keep them for a year; unversioned ones are revalidated hourly.
+		if r.URL.Query().Get("v") != "" {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "public, max-age=3600")
+		}
 		static.ServeHTTP(w, r)
 	}))
 	r.Get("/media/{name}", upload.ServeHandler(store))

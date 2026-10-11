@@ -1,10 +1,7 @@
 {{define "title"}}{{t "manage.bookings.title"}} · {{.Data.Village.Name}}{{end}}
 {{define "content"}}
-<nav class="mb-6 flex flex-wrap items-center gap-x-2 text-sm">
-  <a href="/kelola" class="btn-link">{{t "manage.nav.all_villages"}}</a><span aria-hidden="true">›</span>
-  <a href="/kelola/desa/{{.Data.Village.ID}}" class="btn-link">{{.Data.Village.Name}}</a>
-</nav>
-<h1 class="mb-6 text-2xl font-bold">{{t "manage.bookings.title"}}</h1>
+{{template "crumbs" (crumbs "/kelola" (t "manage.nav.all_villages") (printf "/kelola/desa/%d" .Data.Village.ID) .Data.Village.Name "" (t "manage.bookings.title"))}}
+<h1 class="page-title mb-6">{{t "manage.bookings.title"}}</h1>
 {{template "bookings_lists" .}}
 {{end}}
 

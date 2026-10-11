@@ -43,6 +43,22 @@ test("tanggal di kalender bisa dipilih dengan keyboard", async ({ page }) => {
   expect((await outline(cell)).style).not.toBe("none");
 });
 
+test("menu akun di desktop terbuka, lalu tertutup dengan Escape dan klik di luar", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await login(page, USERS.traveler, "/");
+  const menu = page.locator("nav > div details[data-dropdown]");
+  const summary = menu.locator("summary");
+  await summary.click();
+  await expect(menu.getByRole("link", { name: "Akun saya" })).toBeVisible();
+  await expectNoA11yViolations(page, "menu akun terbuka");
+  await page.keyboard.press("Escape");
+  await expect(menu.getByRole("link", { name: "Akun saya" })).toBeHidden();
+  await expect(summary).toBeFocused();
+  await summary.click();
+  await page.locator("main h1").click();
+  await expect(menu.getByRole("link", { name: "Akun saya" })).toBeHidden();
+});
+
 test.describe("menu HP", () => {
   test.use({ viewport: { width: 375, height: 740 } });
 

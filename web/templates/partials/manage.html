@@ -22,14 +22,6 @@
   {{end}}
 {{end}}
 
-{{define "manage_nav"}}{{/* . is a village.Village */}}
-  <nav class="mb-6 flex flex-wrap items-center gap-x-2 text-sm" aria-label="{{t "manage.nav.label"}}">
-    <a href="/kelola" class="btn-link">{{t "manage.nav.all_villages"}}</a>
-    <span aria-hidden="true">›</span>
-    <a href="/kelola/desa/{{.ID}}" class="btn-link">{{.Name}}</a>
-  </nav>
-{{end}}
-
 {{define "village_fields"}}{{/* . is village.profileData */}}
   <div>
     <label for="name" class="field-label">{{t "village.field.name"}}</label>

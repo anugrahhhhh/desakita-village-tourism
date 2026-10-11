@@ -2,11 +2,8 @@
 {{define "content"}}
 {{$d := .Data}}{{$p := $d.Package}}{{$m := $d.Month}}{{$csrf := .CSRF}}
 {{$base := printf "/kelola/desa/%d/kalender/%d" $p.VillageID $p.ID}}
-<nav class="mb-6 flex flex-wrap items-center gap-x-2 text-sm">
-  <a href="/kelola" class="btn-link">{{t "manage.nav.all_villages"}}</a><span aria-hidden="true">›</span>
-  <a href="/kelola/desa/{{$d.Village.ID}}" class="btn-link">{{$d.Village.Name}}</a>
-</nav>
-<h1 class="mb-2 text-2xl font-bold">{{t "manage.calendar.title"}}</h1>
+{{template "crumbs" (crumbs "/kelola" (t "manage.nav.all_villages") (printf "/kelola/desa/%d" $d.Village.ID) $d.Village.Name (printf "/kelola/desa/%d/paket" $d.Village.ID) (t "manage.village.packages") "" (t "manage.calendar.title"))}}
+<h1 class="page-title mb-2">{{t "manage.calendar.title"}}</h1>
 <p class="mb-4 text-stone-700">{{t "manage.calendar.explain"}}</p>
 
 {{if gt (len $d.Packages) 1}}

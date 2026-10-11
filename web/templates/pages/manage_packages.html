@@ -1,9 +1,9 @@
 {{define "title"}}{{t "manage.village.packages"}}{{end}}
 {{define "content"}}
 {{$v := .Data.Village}}{{$csrf := .CSRF}}
-{{template "manage_nav" $v}}
+{{template "crumbs" (crumbs "/kelola" (t "manage.nav.all_villages") (printf "/kelola/desa/%d" $v.ID) $v.Name "" (t "manage.village.packages"))}}
 <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-  <h1 class="text-2xl font-bold">{{t "manage.village.packages"}}</h1>
+  <h1 class="page-title">{{t "manage.village.packages"}}</h1>
   <a href="/kelola/desa/{{$v.ID}}/paket/baru" class="btn-primary">{{t "package.new.title"}}</a>
 </div>
 <ul class="space-y-4">

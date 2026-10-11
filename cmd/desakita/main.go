@@ -4,6 +4,7 @@
 //	desakita migrate up         apply all pending migrations
 //	desakita migrate down [N]   roll back N migrations (default 1)
 //	desakita seed               load idempotent development seed data
+//	desakita seed-demo          add demo villages in Bandung, Yogyakarta, Surabaya and Jakarta (not in production)
 //	desakita promote-admin EMAIL  grant admin rights to an existing account
 package main
 
@@ -65,6 +66,18 @@ func run(logger *slog.Logger, cfg config.Config, args []string) error {
 		}
 		defer pool.Close()
 		return database.Seed(ctx, pool)
+	case "seed-demo":
+		pool, err := database.Open(ctx, cfg.DatabaseURL)
+		if err != nil {
+			return err
+		}
+		defer pool.Close()
+		n, err := app.SeedDemo(ctx, pool, cfg, logger)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%d demo villages added. Manager login: %s / %s\n", n, app.DemoManagerEmail, app.DemoPassword)
+		return nil
 	case "promote-admin":
 		if len(args) != 1 {
 			return errors.New("usage: promote-admin EMAIL")
@@ -84,7 +97,7 @@ func run(logger *slog.Logger, cfg config.Config, args []string) error {
 		logger.Info("promoted to admin", "email", args[0])
 		return nil
 	default:
-		return fmt.Errorf("unknown command %q (want serve, migrate, seed, promote-admin)", cmd)
+		return fmt.Errorf("unknown command %q (want serve, migrate, seed, seed-demo, promote-admin)", cmd)
 	}
 }
 

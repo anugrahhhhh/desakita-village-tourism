@@ -1,13 +1,10 @@
 {{define "title"}}{{t "stats.title"}} · {{.Data.Village.Name}}{{end}}
 {{define "content"}}
 {{$d := .Data}}{{$s := $d.Stats}}{{$r := $s.Requests}}{{$v := $d.Village}}
-<nav class="mb-6 flex flex-wrap items-center gap-x-2 text-sm" aria-label="{{t "manage.nav.label"}}">
-  <a href="/kelola" class="btn-link">{{t "manage.nav.all_villages"}}</a><span aria-hidden="true">›</span>
-  <a href="/kelola/desa/{{$v.ID}}" class="btn-link">{{$v.Name}}</a>
-</nav>
+{{template "crumbs" (crumbs "/kelola" (t "manage.nav.all_villages") (printf "/kelola/desa/%d" $v.ID) $v.Name "" (t "stats.title"))}}
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
   <div>
-    <h1 class="text-2xl font-bold">{{t "stats.title"}}</h1>
+    <h1 class="page-title">{{t "stats.title"}}</h1>
     <p class="mt-1 text-stone-700">{{$d.FromText}} – {{$d.ToText}}</p>
   </div>
   <nav aria-label="{{t "stats.period_label"}}" class="flex flex-wrap gap-2">

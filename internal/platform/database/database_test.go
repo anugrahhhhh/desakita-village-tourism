@@ -3,6 +3,8 @@ package database_test
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -57,15 +59,26 @@ func TestSeedWithGeneratedQueries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(provinces) != 1 || provinces[0].Name != "Provinsi Contoh" {
-		t.Fatalf("provinces = %+v, want only the placeholder province", provinces)
+	var names []string
+	for _, p := range provinces {
+		names = append(names, p.Name)
 	}
-	regencies, err := q.ListRegionChildren(ctx, &provinces[0].ID)
-	if err != nil {
+	slices.Sort(names) // collation-independent
+	if strings.Join(names, ", ") != "DKI Jakarta, Daerah Istimewa Yogyakarta, Jawa Barat, Jawa Timur" {
+		t.Fatalf("provinces = %v, want the launch provinces (migration 000009)", names)
+	}
+	var regencies, districts int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FILTER (WHERE kind = 'regency'), count(*) FILTER (WHERE kind = 'district') FROM regions").Scan(&regencies, &districts); err != nil {
 		t.Fatal(err)
 	}
-	if len(regencies) != 2 {
-		t.Errorf("regencies = %d, want 2", len(regencies))
+	if regencies != 14 || districts != 40 {
+		t.Errorf("regencies = %d, districts = %d, want 14 and 40", regencies, districts)
+	}
+	for _, city := range []string{"Kota Bandung", "Kota Yogyakarta", "Kota Surabaya", "Kota Administrasi Jakarta Selatan"} {
+		var ok bool
+		if err := pool.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM regions WHERE kind = 'regency' AND name = $1)", city).Scan(&ok); err != nil || !ok {
+			t.Errorf("regency %s missing", city)
+		}
 	}
 	types, err := q.ListActivityTypes(ctx)
 	if err != nil {

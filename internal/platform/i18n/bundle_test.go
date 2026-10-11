@@ -10,13 +10,15 @@ func TestNegotiate(t *testing.T) {
 		"":                                 "",
 		"en-US,en;q=0.9":                   "en",
 		"id-ID,id;q=0.9,en-US;q=0.8":       "id",
-		"fr-FR,fr;q=0.9,en;q=0.5,id;q=0.4": "en",
+		"fr-FR,fr;q=0.9,en;q=0.5,id;q=0.4": "id", // Indonesian-first whenever accepted
+		"en-US,en;q=0.9,id;q=0.8":          "id",
+		"fr-FR,fr;q=0.9,en;q=0.5":          "en",
 		"de,ja":                            "",
 		"en;q=0,id;q=0.1":                  "id",
 		"in":                               "id",
 		"en;q=abc,id":                      "id",
 		"EN-gb":                            "en",
-		"id;q=0.5, en;q=0.5":               "id", // tie: header order wins
+		"en;q=0.5, id;q=0.5":               "id",
 	}
 	for header, want := range cases {
 		if got := Negotiate(header); got != want {

@@ -6,39 +6,65 @@
   <meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
   <title>{{block "title" .}}{{t "app.name"}}{{end}} · {{t "app.name"}}</title>
   <link rel="preload" href="/static/fonts/plus-jakarta-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/static/app.css">
-  <script src="/static/htmx.min.js" defer></script>
-  <script src="/static/app.js" defer></script>
+  <link rel="stylesheet" href="{{asset "app.css"}}">
+  <script src="{{asset "htmx.min.js"}}" defer></script>
+  <script src="{{asset "app.js"}}" defer></script>
   {{block "head" .}}{{end}}
 </head>
 <body class="flex min-h-screen flex-col" hx-headers='{"X-CSRF-Token": "{{.CSRF}}"}'>
   <a href="#isi" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:font-semibold">{{t "nav.skip"}}</a>
   <header class="sticky top-0 z-30 border-b border-stone-200 bg-white/95 backdrop-blur">
-    <nav class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2" aria-label="{{t "nav.main"}}">
-      <a href="/" class="flex min-h-11 items-center gap-2 text-xl font-extrabold text-brand-800">
-        <span class="icon size-8 rounded-lg bg-brand-700 p-1.5 text-white">{{template "i-sprout"}}</span>
+    <nav class="container-page flex h-16 items-center justify-between gap-4" aria-label="{{t "nav.main"}}">
+      <a href="/" class="flex min-h-11 shrink-0 items-center gap-2.5 text-xl font-extrabold tracking-tight text-brand-800">
+        <span class="icon size-9 rounded-xl bg-brand-700 p-2 text-white">{{template "i-sprout"}}</span>
         {{t "app.name"}}
       </a>
 
-      {{/* Desktop navigation */}}
-      <div class="hidden items-center gap-1 text-sm md:flex">
-        {{template "nav_links" .}}
+      {{/* Desktop navigation (lg and up). */}}
+      <div class="hidden items-center gap-1 text-sm lg:flex">
+        {{template "nav_primary" .}}
+        {{if .Viewer}}
+          <details class="relative ml-2" data-dropdown>
+            <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full border border-stone-200 py-1 pl-1 pr-3 hover:border-brand-600 [&::-webkit-details-marker]:hidden">
+              <span class="flex size-8 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white" aria-hidden="true">{{initial .Viewer.Name}}</span>
+              <span class="max-w-36 truncate font-semibold text-stone-800">{{.Viewer.Name}}</span>
+              <span class="sr-only">— {{t "nav.account_menu"}}</span>
+              <span class="icon size-4 rotate-90 text-stone-600" aria-hidden="true">{{template "i-chevron-right"}}</span>
+            </summary>
+            <div class="absolute right-0 mt-2 w-64 rounded-2xl border border-stone-200 bg-white p-2 shadow-lg">
+              <p class="truncate px-3 pb-2 pt-1 text-sm text-stone-600">{{.Viewer.Email}}</p>
+              {{template "nav_account" .}}
+            </div>
+          </details>
+        {{else}}
+          <span class="mx-2 h-6 w-px bg-stone-200" aria-hidden="true"></span>
+          <a href="/masuk" class="nav-link">{{t "nav.login"}}</a>
+          <a href="/daftar" class="btn-primary ml-1 min-h-11 px-4 text-sm">{{t "nav.register"}}</a>
+        {{end}}
       </div>
 
-      {{/* Mobile navigation: <details> needs no JavaScript and works under the strict CSP. */}}
-      <details class="group relative md:hidden">
-        <summary class="flex size-11 cursor-pointer list-none items-center justify-center rounded-lg border border-stone-300 text-stone-800 [&::-webkit-details-marker]:hidden" aria-label="{{t "nav.menu"}}">
+      {{/* Phones and tablets: <details> needs no JavaScript and works under the strict CSP. */}}
+      <details class="group relative lg:hidden" data-dropdown>
+        <summary class="flex size-11 cursor-pointer list-none items-center justify-center rounded-xl border border-stone-300 text-stone-800 [&::-webkit-details-marker]:hidden" aria-label="{{t "nav.menu"}}">
           <span class="icon size-6 group-open:hidden">{{template "i-menu"}}</span>
           <span class="icon hidden size-6 group-open:inline-flex">{{template "i-x"}}</span>
         </summary>
-        <div class="absolute right-0 mt-2 flex w-64 flex-col gap-1 rounded-2xl border border-stone-200 bg-white p-2 text-base shadow-lg">
-          {{template "nav_links" .}}
+        <div class="absolute right-0 mt-2 flex w-72 flex-col gap-1 rounded-2xl border border-stone-200 bg-white p-2 text-base shadow-lg">
+          {{template "nav_primary" .}}
+          <hr class="my-1 border-stone-200">
+          {{if .Viewer}}
+            <p class="truncate px-3 pt-1 text-sm text-stone-600">{{.Viewer.Name}}</p>
+            {{template "nav_account" .}}
+          {{else}}
+            <a href="/masuk" class="nav-link">{{t "nav.login"}}</a>
+            <a href="/daftar" class="btn-primary min-h-11 text-sm">{{t "nav.register"}}</a>
+          {{end}}
         </div>
       </details>
     </nav>
   </header>
 
-  <main id="isi" class="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-8">
+  <main id="isi" class="container-page flex-1 py-6 sm:py-10">
     {{with .Flash}}
       <div role="status" class="mb-6 flex items-start gap-3 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-brand-900">
         <span class="icon mt-0.5 size-5">{{template "i-circle-check"}}</span><span>{{t .}}</span>
@@ -47,50 +73,66 @@
     {{block "content" .}}{{end}}
   </main>
 
-  <footer class="mt-12 border-t border-stone-200 bg-white">
-    <div class="mx-auto grid max-w-6xl gap-6 px-4 py-8 text-sm text-stone-700 sm:grid-cols-2">
-      <div>
-        <p class="flex items-center gap-2 text-base font-extrabold text-brand-800">
-          <span class="icon size-6 rounded-md bg-brand-700 p-1 text-white">{{template "i-sprout"}}</span>{{t "app.name"}}
-        </p>
-        <p class="mt-2 max-w-md">{{t "app.tagline"}}</p>
+  <footer class="mt-16 border-t border-stone-200 bg-white text-sm text-stone-700">
+    <div class="container-page grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-12">
+      <div class="sm:col-span-2 lg:col-span-5">
+        <a href="/" class="inline-flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-brand-800">
+          <span class="icon size-8 rounded-xl bg-brand-700 p-1.5 text-white">{{template "i-sprout"}}</span>{{t "app.name"}}
+        </a>
+        <p class="mt-3 max-w-sm leading-relaxed">{{t "app.tagline"}}</p>
+        <p class="mt-4 flex max-w-sm items-start gap-2 text-stone-700"><span class="icon mt-0.5 size-4 shrink-0 text-brand-700">{{template "i-shield-check"}}</span>{{t "footer.note"}}</p>
       </div>
-      <div>
-        <p class="font-semibold text-stone-900">{{t "footer.sdg_heading"}}</p>
-        <ul class="mt-2 space-y-1">
+      <nav class="lg:col-span-3" aria-label="{{t "footer.explore"}}">
+        <h2 class="font-semibold text-stone-900">{{t "footer.explore"}}</h2>
+        <ul class="mt-3 space-y-1">
+          <li><a href="/" class="footer-link">{{t "footer.home"}}</a></li>
+          <li><a href="/peta" class="footer-link">{{t "nav.map"}}</a></li>
+          <li><a href="/kelola/desa/baru" class="footer-link">{{t "footer.register_village"}}</a></li>
+        </ul>
+      </nav>
+      <div class="lg:col-span-4">
+        <h2 class="font-semibold text-stone-900">{{t "footer.sdg_heading"}}</h2>
+        <ul class="mt-3 space-y-2 leading-snug">
           <li>{{t "footer.sdg8"}}</li>
           <li>{{t "footer.sdg11"}}</li>
           <li>{{t "footer.sdg12"}}</li>
         </ul>
       </div>
-      {{if .CSRF}}{{/* Error pages have no CSRF token, so no switcher there. */}}
-        <form method="post" action="/bahasa" class="flex flex-wrap items-center gap-2 sm:col-span-2">
-          <input type="hidden" name="csrf_token" value="{{.CSRF}}">
-          <input type="hidden" name="back" value="{{.URI}}">
-          <span class="font-semibold text-stone-900">{{t "lang.switch_label"}}</span>
-          {{if eq .Lang "id"}}<span class="font-semibold text-brand-800" aria-current="true">{{t "lang.name.id"}}</span>{{else}}<button type="submit" name="lang" value="id" lang="id" class="btn-link min-h-11">{{t "lang.name.id"}}</button>{{end}}
-          <span aria-hidden="true">·</span>
-          {{if eq .Lang "en"}}<span class="font-semibold text-brand-800" aria-current="true">{{t "lang.name.en"}}</span>{{else}}<button type="submit" name="lang" value="en" lang="en" class="btn-link min-h-11">{{t "lang.name.en"}}</button>{{end}}
-        </form>
-      {{end}}
+    </div>
+    <div class="border-t border-stone-200">
+      <div class="container-page flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <p>{{t "footer.copyright" year}}</p>
+        {{if .CSRF}}{{/* Error pages have no CSRF token, so no switcher there. */}}
+          <form method="post" action="/bahasa" class="flex flex-wrap items-center gap-x-2">
+            <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+            <input type="hidden" name="back" value="{{.URI}}">
+            <span class="sr-only">{{t "lang.switch_label"}}</span><span class="icon size-4 text-stone-600" aria-hidden="true">{{template "i-languages"}}</span>
+            {{if eq .Lang "id"}}<span class="font-semibold text-brand-800" aria-current="true">{{t "lang.name.id"}}</span>{{else}}<button type="submit" name="lang" value="id" lang="id" class="btn-link min-h-11">{{t "lang.name.id"}}</button>{{end}}
+            <span aria-hidden="true">·</span>
+            {{if eq .Lang "en"}}<span class="font-semibold text-brand-800" aria-current="true">{{t "lang.name.en"}}</span>{{else}}<button type="submit" name="lang" value="en" lang="en" class="btn-link min-h-11">{{t "lang.name.en"}}</button>{{end}}
+          </form>
+        {{end}}
+      </div>
     </div>
   </footer>
 </body>
 </html>{{end}}
 
-{{define "nav_links"}}
-  <a href="/peta" class="nav-link">{{t "nav.map"}}</a>
+{{/* Sections everyone (or the logged-in user) can open; the current one is marked. */}}
+{{define "nav_primary"}}
+  <a href="/peta" class="nav-link"{{if navCurrent $.Path "/peta"}} aria-current="page"{{end}}>{{t "nav.map"}}</a>
   {{if .Viewer}}
-    {{if .Viewer.IsAdmin}}<a href="/admin" class="nav-link">{{t "nav.admin"}}</a>{{end}}
-    <a href="/pemesanan" class="nav-link">{{t "nav.my_bookings"}}</a>
-    <a href="/kelola" class="nav-link">{{t "nav.manage"}}</a>
-    <a href="/akun" class="nav-link">{{t "nav.account"}}</a>
-    <form method="post" action="/keluar">
-      <input type="hidden" name="csrf_token" value="{{.CSRF}}">
-      <button type="submit" class="nav-link w-full text-left text-stone-700">{{t "nav.logout"}}</button>
-    </form>
-  {{else}}
-    <a href="/masuk" class="nav-link">{{t "nav.login"}}</a>
-    <a href="/daftar" class="btn-primary min-h-11 px-4 text-sm">{{t "nav.register"}}</a>
+    <a href="/pemesanan" class="nav-link"{{if navCurrent $.Path "/pemesanan"}} aria-current="page"{{end}}>{{t "nav.my_bookings"}}</a>
+    <a href="/kelola" class="nav-link"{{if navCurrent $.Path "/kelola"}} aria-current="page"{{end}}>{{t "nav.manage"}}</a>
+    {{if .Viewer.IsAdmin}}<a href="/admin" class="nav-link"{{if navCurrent $.Path "/admin"}} aria-current="page"{{end}}>{{t "nav.admin"}}</a>{{end}}
   {{end}}
+{{end}}
+
+{{/* Account entries for the logged-in user. */}}
+{{define "nav_account"}}
+  <a href="/akun" class="nav-link w-full"{{if navCurrent $.Path "/akun"}} aria-current="page"{{end}}>{{t "nav.account"}}</a>
+  <form method="post" action="/keluar">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <button type="submit" class="nav-link w-full text-left">{{t "nav.logout"}}</button>
+  </form>
 {{end}}

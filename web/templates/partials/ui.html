@@ -1,0 +1,18 @@
+{{/* Shared page structure. */}}
+
+{{/* Breadcrumb trail: {{template "crumbs" (crumbs "/a" "A" "" "Current")}} */}}
+{{define "crumbs"}}
+<nav class="mb-3" aria-label="{{t "nav.breadcrumbs"}}">
+  <ol class="flex flex-wrap items-center gap-x-1 text-sm">
+    {{range $i, $c := .}}
+      <li class="flex min-w-0 items-center gap-1">
+        {{if $i}}<span class="icon size-4 text-stone-500" aria-hidden="true">{{template "i-chevron-right"}}</span>{{end}}
+        {{if $c.Href}}<a href="{{$c.Href}}" class="crumb-link">{{$c.Label}}</a>{{else}}<span class="inline-flex min-h-11 items-center truncate font-semibold text-stone-700" aria-current="page">{{$c.Label}}</span>{{end}}
+      </li>
+    {{end}}
+  </ol>
+</nav>
+{{end}}
+
+{{/* Trailing chevron for row-link cards. */}}
+{{define "row_chevron"}}<span class="icon ml-auto size-5 shrink-0 text-stone-500" aria-hidden="true">{{template "i-chevron-right"}}</span>{{end}}

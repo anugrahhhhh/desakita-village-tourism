@@ -22,7 +22,22 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", function () { initTotals(document); });
+  // Menus built on <details data-dropdown>: close on Escape or a click outside. Without
+  // JavaScript they still open and close with their own toggle.
+  function initDropdowns() {
+    var menus = document.querySelectorAll("details[data-dropdown]");
+    document.addEventListener("click", function (e) {
+      menus.forEach(function (d) { if (d.open && !d.contains(e.target)) d.open = false; });
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
+      menus.forEach(function (d) {
+        if (d.open) { d.open = false; d.querySelector("summary").focus(); }
+      });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () { initTotals(document); initDropdowns(); });
   // Re-run after htmx swaps (e.g. calendar month navigation keeps the form intact).
   document.addEventListener("htmx:afterSwap", function (e) { initTotals(e.target); });
 })();

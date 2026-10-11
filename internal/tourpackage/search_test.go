@@ -53,7 +53,7 @@ func TestSearch(t *testing.T) {
 	}
 	act0 := strconv.FormatInt(e.activities[0], 10)
 	var regency int64
-	if err := e.pool.QueryRow(ctx, "SELECT id FROM regions WHERE kind = 'regency' LIMIT 1").Scan(&regency); err != nil {
+	if err := e.pool.QueryRow(ctx, `SELECT d.parent_id FROM villages v JOIN regions d ON d.id = v.district_id WHERE v.id = $1`, e.villageA).Scan(&regency); err != nil {
 		t.Fatal(err)
 	}
 

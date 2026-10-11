@@ -2,8 +2,8 @@
 {{define "content"}}
 {{$d := .Data}}
 <div class="mx-auto max-w-2xl">
-  {{template "manage_nav" $d.Village}}
-  <h1 class="mb-6 text-2xl font-bold">{{if $d.IsNew}}{{t "package.new.title"}}{{else}}{{t "package.edit.title"}}{{end}}</h1>
+  {{template "crumbs" (crumbs "/kelola" (t "manage.nav.all_villages") (printf "/kelola/desa/%d" $d.Village.ID) $d.Village.Name (printf "/kelola/desa/%d/paket" $d.Village.ID) (t "manage.village.packages") "" (or $d.Package.Name (t "package.new.title")))}}
+  <h1 class="page-title mb-6">{{if $d.IsNew}}{{t "package.new.title"}}{{else}}{{t "package.edit.title"}}{{end}}</h1>
   <form method="post" action="/kelola/desa/{{$d.Village.ID}}/paket/{{if $d.IsNew}}baru{{else}}{{$d.Package.ID}}{{end}}" class="card space-y-5" novalidate>
     <input type="hidden" name="csrf_token" value="{{.CSRF}}">
     <div>
@@ -46,7 +46,7 @@
         {{range $d.ActivityTypes}}
           <label class="flex min-h-12 items-center gap-3 rounded-lg border border-stone-200 bg-white px-3">
             <input type="checkbox" name="activity_types" value="{{.ID}}" class="size-5" {{if index $d.Selected (printf "%d" .ID)}}checked{{end}}>
-            <span>{{.Name}}</span>
+            <span>{{activity .Slug .Name}}</span>
           </label>
         {{end}}
       </div>

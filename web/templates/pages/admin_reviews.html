@@ -1,7 +1,7 @@
 {{define "title"}}{{t "admin.nav.reviews"}} · {{t "admin.title"}}{{end}}
 {{define "content"}}
 {{$d := .Data}}{{$csrf := .CSRF}}
-<h1 class="mb-1 text-2xl font-extrabold">{{t "admin.nav.reviews"}}</h1>
+<h1 class="page-title mb-1">{{t "admin.nav.reviews"}}</h1>
 <p class="mb-4 text-stone-700">{{t "admin.reviews.explain"}}</p>
 {{template "admin_nav" $d.Section}}
 <nav class="mb-6 flex flex-wrap gap-2" aria-label="{{t "admin.reviews.filter"}}">

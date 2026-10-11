@@ -3,6 +3,8 @@ package render
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -40,6 +42,9 @@ type View struct {
 // zone holds the display time zone; templates read it through the "local" func.
 type zone struct{ loc *time.Location }
 
+// Crumb is one breadcrumb step; an empty Href is the current page.
+type Crumb struct{ Href, Label string }
+
 // MapConfig is what map pages need to set up Leaflet (SPEC §14); templates read it
 // through the "mapConfig" func.
 type MapConfig struct {
@@ -49,9 +54,42 @@ type MapConfig struct {
 	AttributionURL  string
 }
 
+// assets maps a static file path ("app.css") to a short hash of its content, so asset URLs
+// change whenever the file does and browsers never mix new pages with cached old CSS/JS.
+type assets struct{ hash map[string]string }
+
+// newAssets hashes every file in fsys (the embedded web/static tree).
+func newAssets(fsys fs.FS) (*assets, error) {
+	a := &assets{hash: map[string]string{}}
+	err := fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		b, err := fs.ReadFile(fsys, p)
+		if err != nil {
+			return err
+		}
+		sum := sha256.Sum256(b)
+		a.hash[p] = hex.EncodeToString(sum[:4])
+		return nil
+	})
+	return a, err
+}
+
+// url returns "/static/<p>?v=<hash>", or "/static/<p>" for an unknown file.
+func (a *assets) url(p string) string {
+	if a != nil {
+		if h, ok := a.hash[p]; ok {
+			return "/static/" + p + "?v=" + h
+		}
+	}
+	return "/static/" + p
+}
+
 type Renderer struct {
 	zone   *zone
 	mapCfg *MapConfig
+	assets *assets
 	// pages[lang][name]: each page is parsed once per language, so "t" is bound at parse
 	// time and rendering stays as fast as with one language.
 	pages  map[string]map[string]*template.Template
@@ -65,20 +103,63 @@ type Renderer struct {
 func New(fsys fs.FS, bundle *i18n.Bundle, sm *scs.SessionManager, logger *slog.Logger) (*Renderer, error) {
 	z := &zone{loc: time.UTC}
 	mc := &MapConfig{}
+	as := &assets{}
 	pages := map[string]map[string]*template.Template{}
 	for _, lang := range i18n.Supported {
-		p, err := parsePages(fsys, bundle.For(lang), z, mc)
+		p, err := parsePages(fsys, bundle.For(lang), z, mc, as)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", lang, err)
 		}
 		pages[lang] = p
 	}
-	return &Renderer{zone: z, mapCfg: mc, pages: pages, bundle: bundle, sm: sm, logger: logger}, nil
+	return &Renderer{zone: z, mapCfg: mc, assets: as, pages: pages, bundle: bundle, sm: sm, logger: logger}, nil
 }
 
-func parsePages(fsys fs.FS, tr *i18n.Translator, z *zone, mc *MapConfig) (map[string]*template.Template, error) {
+// SetStatic hashes the static files so templates can link them with {{asset "app.css"}}.
+// Call before serving.
+func (rd *Renderer) SetStatic(fsys fs.FS) error {
+	a, err := newAssets(fsys)
+	if err != nil {
+		return fmt.Errorf("hash static files: %w", err)
+	}
+	*rd.assets = *a
+	return nil
+}
+
+func parsePages(fsys fs.FS, tr *i18n.Translator, z *zone, mc *MapConfig, as *assets) (map[string]*template.Template, error) {
 	funcs := template.FuncMap{
+		// asset links a static file with a content hash (cache busting).
+		"asset":     as.url,
 		"mapConfig": func() MapConfig { return *mc },
+		// initial is the first letter of a name, for the account avatar.
+		"initial": func(name string) string {
+			for _, r := range strings.TrimSpace(name) {
+				return strings.ToUpper(string(r))
+			}
+			return "?"
+		},
+		"year": func() int { return time.Now().In(z.loc).Year() },
+		// crumbs builds a breadcrumb trail from href/label pairs; an empty href marks the
+		// current page.
+		"crumbs": func(pairs ...string) []Crumb {
+			out := make([]Crumb, 0, len(pairs)/2)
+			for i := 0; i+1 < len(pairs); i += 2 {
+				out = append(out, Crumb{Href: pairs[i], Label: pairs[i+1]})
+			}
+			return out
+		},
+		// navCurrent reports whether the nav item for prefix is the current section.
+		"navCurrent": func(path, prefix string) bool {
+			return path == prefix || strings.HasPrefix(path, prefix+"/")
+		},
+		// activity names a seeded activity type in the page language ("activity.<slug>"),
+		// falling back to the stored name for types added later without a translation.
+		"activity": func(slug, name string) string {
+			if key := "activity." + slug; tr.Has(key) {
+				return tr.T(key)
+			}
+			return name
+		},
 		// coord formats a coordinate for a data attribute or input ("" when unset).
 		"coord": func(f *float64) string {
 			if f == nil {

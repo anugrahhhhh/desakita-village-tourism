@@ -8,7 +8,8 @@ Village-tourism guide and booking site. The spec, in Indonesian, is the source o
 cp .env.example .env                 # once; .env is git-ignored
 go run ./cmd/desakita migrate up     # apply migrations
 go run ./cmd/desakita migrate down 1 # roll back one
-go run ./cmd/desakita seed           # idempotent dev seed (placeholder regions only)
+go run ./cmd/desakita seed           # idempotent seed (activity types; regions come from migration 000009)
+go run ./cmd/desakita seed-demo      # dev only: 8 fictional villages in Bandung, Yogyakarta, Surabaya, Jakarta (SPEC §17)
 go run ./cmd/desakita serve          # http://localhost:8080, /healthz pings the DB
 go run ./cmd/desakita promote-admin EMAIL  # grant admin to an existing account (no web UI for this)
 sqlc generate                        # after editing queries/ or migrations/ (sqlc v1.29.0)
@@ -59,4 +60,5 @@ The module targets Go 1.26 (required by the patched `golang.org/x/image`).
 - Emails use the outbox (`internal/platform/mail`, SPEC §13). Enqueue with `mail.Enqueue(ctx, tx, …)` inside the business transaction, never send from a request. `booking` and `village` emit events through their `Notifier` interfaces; `internal/app/notify.go` picks recipients and renders `web/emails/<lang>/*.txt`. Every message needs a `dedupe_key`. Emails never contain phone numbers or booking notes, and logs never contain addresses or bodies. Tests never run the worker against real SMTP.
 - Maps (SPEC §14): Leaflet is vendored in `web/static/leaflet/` (`npm run vendor:assets`) and loaded only by pages that define the `head` block with `map_head`. Tiles always come from our `/tiles/...` route (`internal/platform/tiles`), never directly from a third party, so CSP stays `'self'`. Map markup is progressive enhancement: containers start `hidden`, and the list or inputs carry the data. Coordinates must lie inside `geo.Indonesia`. Tests and E2E never contact the real tile server; the fixture runs a fake upstream.
 - Manager statistics (SPEC §16) live in `internal/booking/stats.go` and `queries/stats.sql`, read in one read-only snapshot, with an ownership check. Charts are server-drawn SVG (geometry in Go, colors via CSS classes), always paired with a table.
+- UI building blocks (web/assets/app.css, partials/ui.html): inner pages use `page-title` for the `<h1>` and `{{template "crumbs" (crumbs "/href" "Label" … "" "Current")}}` for breadcrumbs (empty href = current page); whole-card links use `row-link` with `{{template "row_chevron"}}`; primary nav marks the current section with `navCurrent`. Reuse these instead of ad-hoc classes.
 - Keep CSP strict (`script-src 'self'`, `style-src 'self'`): no inline scripts or styles. htmx indicator styles are disabled via the `htmx-config` meta tag.

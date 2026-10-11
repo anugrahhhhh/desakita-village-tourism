@@ -1,7 +1,7 @@
 {{define "title"}}{{t "admin.title"}}{{end}}
 {{define "content"}}
 {{$d := .Data}}
-<h1 class="mb-4 text-2xl font-extrabold">{{t "admin.title"}}</h1>
+<h1 class="page-title mb-4">{{t "admin.title"}}</h1>
 {{template "admin_nav" $d.Section}}
 
 <ul class="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -28,9 +28,10 @@
     <h2 id="queue-heading" class="mb-3 text-xl font-bold">{{t "admin.queue.title"}}</h2>
     <ul class="space-y-3">
       {{range $d.Queue}}
-        <li><a href="/admin/desa/{{.ID}}" class="card flex flex-wrap items-center justify-between gap-2 hover:border-brand-600">
-          <span><strong>{{.Name}}</strong><br><span class="text-sm text-stone-700">{{.DistrictName}}, {{.RegencyName}}</span></span>
+        <li><a href="/admin/desa/{{.ID}}" class="row-link flex-wrap">
+          <span class="min-w-0 flex-1"><strong>{{.Name}}</strong><br><span class="text-sm text-stone-700">{{.DistrictName}}, {{.RegencyName}}</span></span>
           <span class="badge {{if ge .DaysWaiting 3}}bg-red-100 text-red-900{{else}}bg-amber-100 text-amber-900{{end}}"><span class="icon size-4">{{template "i-clock"}}</span>{{if eq .DaysWaiting 0}}{{t "admin.queue.today"}}{{else}}{{t "admin.queue.days" .DaysWaiting}}{{end}}</span>
+          {{template "row_chevron"}}
         </a></li>
       {{else}}
         <li class="card flex items-center gap-3 text-stone-700"><span class="icon size-5 text-brand-700">{{template "i-circle-check"}}</span>{{t "admin.queue.empty"}}</li>

@@ -11,6 +11,7 @@ import (
 
 	"desakita/internal/platform/audit"
 	"desakita/internal/platform/i18n"
+	"desakita/seeds"
 	"desakita/web"
 )
 
@@ -116,6 +117,25 @@ func TestEmailTemplatesPerLanguage(t *testing.T) {
 	for _, lang := range i18n.Supported {
 		if got := names(lang); !slices.Equal(got, want) {
 			t.Errorf("emails/%s = %v, want %v", lang, got, want)
+		}
+	}
+}
+
+// Every seeded activity type has a translated name in every language.
+func TestActivityTypesTranslated(t *testing.T) {
+	slugs := regexp.MustCompile(`\('([a-z]+)',\s+'[^']+'\)`).FindAllStringSubmatch(seeds.DevSQL, -1)
+	if len(slugs) == 0 {
+		t.Fatal("no activity types found in seeds/dev.sql")
+	}
+	for _, lang := range i18n.Supported {
+		tr, err := i18n.Load(web.FS, lang)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range slugs {
+			if !tr.Has("activity." + m[1]) {
+				t.Errorf("%s.json: missing activity.%s", lang, m[1])
+			}
 		}
 	}
 }

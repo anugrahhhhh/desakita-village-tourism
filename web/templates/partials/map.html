@@ -1,8 +1,8 @@
 {{/* Map helpers (SPEC §14). Leaflet and map.js load only on pages that define "head" with map_head. */}}
 {{define "map_head"}}
-  <link rel="stylesheet" href="/static/leaflet/leaflet.css">
-  <script src="/static/leaflet/leaflet.js" defer></script>
-  <script src="/static/map.js" defer></script>
+  <link rel="stylesheet" href="{{asset "leaflet/leaflet.css"}}">
+  <script src="{{asset "leaflet/leaflet.js"}}" defer></script>
+  <script src="{{asset "map.js"}}" defer></script>
 {{end}}
 
 {{/* Shared data attributes for every [data-map] element. */}}

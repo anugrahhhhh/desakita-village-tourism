@@ -1,23 +1,46 @@
 {{define "content"}}
 {{$d := .Data}}{{$f := $d.Filter}}
 
-<section class="-mx-4 -mt-6 mb-8 bg-brand-800 px-4 pb-8 pt-10 text-white sm:mx-0 sm:mt-0 sm:rounded-3xl sm:px-10 sm:py-14">
-  <p class="badge bg-brand-100 text-brand-900"><span class="icon size-4">{{template "i-sprout"}}</span>{{t "home.kicker"}}</p>
-  <h1 class="mt-4 max-w-3xl text-3xl font-extrabold leading-tight sm:text-5xl">{{t "home.heading"}}</h1>
-  <p class="mt-3 max-w-2xl text-lg text-brand-100">{{t "home.lead"}}</p>
+<section class="relative -mx-4 -mt-6 mb-10 overflow-hidden bg-brand-800 text-white sm:mx-0 sm:mt-0 sm:rounded-3xl" aria-labelledby="hero-heading">
+  {{template "hero_hills"}}
+  <div class="relative grid gap-10 px-4 pb-20 pt-10 sm:px-10 sm:pb-24 sm:pt-14 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-center lg:gap-12 lg:px-12">
+    <div>
+      <p class="badge bg-brand-100 text-brand-900"><span class="icon size-4">{{template "i-sprout"}}</span>{{t "home.kicker"}}</p>
+      <h1 id="hero-heading" class="mt-5 max-w-2xl text-3xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl">{{t "home.heading"}}</h1>
+      <p class="mt-4 max-w-xl text-lg leading-relaxed text-brand-100">{{t "home.lead"}}</p>
 
-  <form method="get" action="/" role="search" class="mt-6 flex max-w-2xl flex-col gap-2 rounded-2xl bg-white p-2 sm:flex-row">
-    <label for="q-hero" class="sr-only">{{t "search.query"}}</label>
-    <div class="flex flex-1 items-center gap-2 px-2 text-stone-600">
-      <span class="icon size-5">{{template "i-search"}}</span>
-      <input id="q-hero" name="q" maxlength="100" value="{{$f.Query}}" placeholder="{{t "search.query_hint"}}"
-             class="min-h-12 w-full bg-transparent text-base text-stone-900 placeholder:text-stone-500">
+      <form method="get" action="/" role="search" class="mt-8 flex max-w-xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-lg sm:flex-row">
+        <label for="q-hero" class="sr-only">{{t "search.query"}}</label>
+        <div class="flex flex-1 items-center gap-2 px-2 text-stone-600">
+          <span class="icon size-5">{{template "i-search"}}</span>
+          <input id="q-hero" name="q" maxlength="100" value="{{$f.Query}}" placeholder="{{t "search.query_hint"}}"
+                 class="min-h-12 w-full bg-transparent text-base text-stone-900 placeholder:text-stone-500">
+        </div>
+        {{with $f.Regency}}<input type="hidden" name="wilayah" value="{{.}}">{{end}}
+        {{with $f.ActivityType}}<input type="hidden" name="kegiatan" value="{{.}}">{{end}}
+        <button type="submit" class="btn-accent">{{t "search.submit"}}</button>
+      </form>
+      <p class="mt-3 max-w-xl text-sm text-brand-100">{{t "search.syntax_hint"}}</p>
     </div>
-    {{with $f.Regency}}<input type="hidden" name="wilayah" value="{{.}}">{{end}}
-    {{with $f.ActivityType}}<input type="hidden" name="kegiatan" value="{{.}}">{{end}}
-    <button type="submit" class="btn-accent">{{t "search.submit"}}</button>
-    <p class="w-full px-2 pb-1 text-xs text-stone-600 sm:hidden">{{t "search.syntax_hint"}}</p>
-  </form>
+
+    <aside class="hidden rounded-2xl bg-brand-900/40 p-6 ring-1 ring-white/15 lg:block" aria-labelledby="trust-heading">
+      <h2 id="trust-heading" class="font-bold text-white">{{t "home.trust.title"}}</h2>
+      <ul class="mt-5 space-y-5">
+        <li class="flex gap-3">
+          <span class="icon size-10 shrink-0 rounded-xl bg-brand-700 p-2.5 text-white">{{template "i-shield-check"}}</span>
+          <span><strong class="block font-semibold text-white">{{t "home.trust.verified"}}</strong><span class="text-sm text-brand-100">{{t "home.trust.verified_text"}}</span></span>
+        </li>
+        <li class="flex gap-3">
+          <span class="icon size-10 shrink-0 rounded-xl bg-brand-700 p-2.5 text-white">{{template "i-wallet"}}</span>
+          <span><strong class="block font-semibold text-white">{{t "home.trust.direct"}}</strong><span class="text-sm text-brand-100">{{t "home.trust.direct_text"}}</span></span>
+        </li>
+        <li class="flex gap-3">
+          <span class="icon size-10 shrink-0 rounded-xl bg-brand-700 p-2.5 text-white">{{template "i-calendar-days"}}</span>
+          <span><strong class="block font-semibold text-white">{{t "home.trust.quota"}}</strong><span class="text-sm text-brand-100">{{t "home.trust.quota_text"}}</span></span>
+        </li>
+      </ul>
+    </aside>
+  </div>
 </section>
 
 {{with $d.ActivityTypes}}
@@ -26,13 +49,13 @@
       <li class="shrink-0"><a href="/" class="chip {{if eq $f.ActivityType ""}}border-brand-700 bg-brand-700 text-white hover:text-white{{end}}" {{if eq $f.ActivityType ""}}aria-current="true"{{end}}>{{t "search.all"}}</a></li>
       {{range .}}
         {{$id := printf "%d" .ID}}
-        <li class="shrink-0"><a href="/?kegiatan={{.ID}}" class="chip {{if eq $id $f.ActivityType}}border-brand-700 bg-brand-700 text-white hover:text-white{{end}}" {{if eq $id $f.ActivityType}}aria-current="true"{{end}}>{{.Name}}</a></li>
+        <li class="shrink-0"><a href="/?kegiatan={{.ID}}" class="chip {{if eq $id $f.ActivityType}}border-brand-700 bg-brand-700 text-white hover:text-white{{end}}" {{if eq $id $f.ActivityType}}aria-current="true"{{end}}>{{activity .Slug .Name}}</a></li>
       {{end}}
     </ul>
   </nav>
 {{end}}
 
-<details class="card mb-8" {{if $d.Filtered}}open{{end}}>
+<details class="card mb-10" {{if $d.Filtered}}open{{end}}>
   <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between font-semibold [&::-webkit-details-marker]:hidden">
     <span class="flex items-center gap-2"><span class="icon size-5 text-brand-700">{{template "i-list-checks"}}</span>{{t "search.more_filters"}}</span>
     <span class="icon size-5 text-stone-600">{{template "i-chevron-right"}}</span>
@@ -53,7 +76,7 @@
       <label for="kegiatan" class="field-label">{{t "search.activity"}}</label>
       <select id="kegiatan" name="kegiatan" class="field-input">
         <option value="">{{t "search.all"}}</option>
-        {{range $d.ActivityTypes}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $f.ActivityType}}selected{{end}}>{{.Name}}</option>{{end}}
+        {{range $d.ActivityTypes}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $f.ActivityType}}selected{{end}}>{{activity .Slug .Name}}</option>{{end}}
       </select>
     </div>
     <div class="grid grid-cols-2 gap-2">
@@ -73,27 +96,25 @@
   </form>
 </details>
 
-<div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+<div class="mb-5 flex flex-wrap items-center justify-between gap-4">
   <div>
-    <h2 class="text-2xl font-extrabold">{{if $d.Filtered}}{{t "search.results"}}{{else}}{{t "search.all_packages"}}{{end}}</h2>
-    <p class="text-sm text-stone-700" aria-live="polite">{{t "search.total" $d.Results.Total}}</p>
+    <h2 class="text-2xl font-extrabold tracking-tight">{{if $d.Filtered}}{{t "search.results"}}{{else}}{{t "search.all_packages"}}{{end}}</h2>
+    <p class="mt-0.5 text-sm text-stone-700" aria-live="polite">{{t "search.total" $d.Results.Total}}</p>
   </div>
   {{if $d.Results.Total}}
-    <form method="get" action="/" class="flex items-end gap-2">
+    <form method="get" action="/" class="flex flex-wrap items-center gap-2">
       {{with $f.Query}}<input type="hidden" name="q" value="{{.}}">{{end}}
       {{with $f.Regency}}<input type="hidden" name="wilayah" value="{{.}}">{{end}}
       {{with $f.ActivityType}}<input type="hidden" name="kegiatan" value="{{.}}">{{end}}
       {{with $f.MinPrice}}<input type="hidden" name="harga_min" value="{{.}}">{{end}}
       {{with $f.MaxPrice}}<input type="hidden" name="harga_maks" value="{{.}}">{{end}}
-      <div>
-        <label for="urut" class="field-label">{{t "search.sort"}}</label>
-        <select id="urut" name="urut" class="field-input min-w-44">
-          {{range $d.SortOptions}}
-            {{if or (ne . "relevan") $f.Query}}<option value="{{.}}" {{if eq . $d.Results.Sort}}selected{{end}}>{{template "sort_label" .}}</option>{{end}}
-          {{end}}
-        </select>
-      </div>
-      <button type="submit" class="btn-secondary">{{t "search.apply_sort"}}</button>
+      <label for="urut" class="text-sm font-semibold text-stone-800">{{t "search.sort"}}</label>
+      <select id="urut" name="urut" class="field-input min-h-11 w-auto min-w-44">
+        {{range $d.SortOptions}}
+          {{if or (ne . "relevan") $f.Query}}<option value="{{.}}" {{if eq . $d.Results.Sort}}selected{{end}}>{{template "sort_label" .}}</option>{{end}}
+        {{end}}
+      </select>
+      <button type="submit" class="btn-secondary min-h-11 px-4 text-sm">{{t "search.apply_sort"}}</button>
     </form>
   {{end}}
 </div>
@@ -114,8 +135,8 @@
   </nav>
 {{end}}
 
-<section class="mt-14" aria-labelledby="how-heading">
-  <h2 id="how-heading" class="text-2xl font-extrabold">{{t "home.how.title"}}</h2>
+<section class="mt-16" aria-labelledby="how-heading">
+  <h2 id="how-heading" class="text-2xl font-extrabold tracking-tight">{{t "home.how.title"}}</h2>
   <ol class="mt-5 grid gap-4 sm:grid-cols-3">
     <li class="card">
       <span class="icon size-11 rounded-xl bg-brand-50 p-2.5 text-brand-800">{{template "i-search"}}</span>
@@ -138,4 +159,12 @@
 
 {{define "sort_label"}}
   {{- if eq . "relevan"}}{{t "search.sort_relevance"}}{{else if eq . "termurah"}}{{t "search.sort_price_asc"}}{{else if eq . "termahal"}}{{t "search.sort_price_desc"}}{{else}}{{t "search.sort_newest"}}{{end -}}
+{{end}}
+
+{{/* Decorative rolling hills along the bottom of the hero. */}}
+{{define "hero_hills"}}
+<svg class="pointer-events-none absolute inset-x-0 bottom-0 h-16 w-full sm:h-24" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+  <path class="fill-brand-700" d="M0 70 C150 30 300 30 450 60 C600 90 750 40 900 45 C1020 50 1110 80 1200 60 V120 H0Z"></path>
+  <path class="fill-brand-900" d="M0 95 C200 70 350 105 520 90 C700 75 850 100 1000 88 C1100 80 1160 92 1200 90 V120 H0Z"></path>
+</svg>
 {{end}}

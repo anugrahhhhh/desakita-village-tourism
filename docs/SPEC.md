@@ -42,7 +42,7 @@ Katalog bisa dilihat tanpa login. Login diperlukan untuk memesan atau melapor.
 
 ### Keputusan terbuka
 
-- **Wilayah awal: belum diputuskan.** Tabel `regions` dibuat generik dan migrasi tidak berisi data wilayah. Seed pengembangan hanya memuat wilayah contoh.
+- **Wilayah awal: Bandung, Yogyakarta, Surabaya, dan Jakarta** (diputuskan setelah tahap 7, lihat §17). Tabel `regions` tetap generik, sehingga wilayah lain bisa ditambahkan lewat migrasi baru.
 - Desa mitra nyata untuk uji coba di minggu ke-8.
 
 ## 2. Teknologi dan struktur
@@ -926,7 +926,7 @@ Urutannya:
 
 1. cookie `lang` (pilihan eksplisit pengunjung);
 2. bahasa akun (`users.locale`) bila pengguna sudah masuk;
-3. header `Accept-Language`;
+3. header `Accept-Language`: bahasa Indonesia dipilih bila header menerimanya di urutan mana pun (banyak orang Indonesia memakai browser berbahasa Inggris); bahasa Inggris dipakai bila header tidak menerima bahasa Indonesia sama sekali;
 4. bahasa Indonesia.
 
 Bahasa ditentukan di middleware `detectLang`, yang berjalan dua kali:
@@ -1010,3 +1010,37 @@ Atribut `<html lang>` dan header `Content-Language` mengikuti bahasa yang dipili
 | Skala sumbu, geometri kolom, label selektif, label bulan per bahasa, dan format durasi | `TestNiceMax`, `TestBuildChart`, `TestFormatDuration` |
 | Halaman, pilihan periode, bahasa Inggris, dan akses (404 untuk wisatawan, redirect untuk anonim) | `TestManagerStatsPage` |
 | axe-core WCAG 2.1 AA di 375 px dan 1280 px | `e2e/tests/a11y.spec.ts`, `e2e/tests/lang.spec.ts` |
+
+## 17. Wilayah peluncuran dan data contoh
+
+### Wilayah
+
+Migrasi `000009` mengisi wilayah asli: 4 provinsi, 14 kabupaten/kota, dan 40 kecamatan tempat desa dan kampung wisata berada.
+
+| Kota | Provinsi | Kabupaten/kota |
+|---|---|---|
+| Bandung | Jawa Barat | Kota Bandung, Kabupaten Bandung Barat (Lembang dan sekitarnya), Kabupaten Bandung (Ciwidey, Pangalengan) |
+| Yogyakarta | Daerah Istimewa Yogyakarta | Kota Yogyakarta, Kabupaten Sleman, Kabupaten Bantul, Kabupaten Gunungkidul |
+| Surabaya | Jawa Timur | Kota Surabaya |
+| Jakarta | DKI Jakarta | lima kota administrasi dan Kabupaten Administrasi Kepulauan Seribu |
+
+- Data wilayah ikut migrasi karena production juga membutuhkannya.
+- Wilayah contoh lama ("Provinsi Contoh") tidak lagi di-seed.
+- Menambah kecamatan cukup dengan migrasi baru yang memakai pola `INSERT … ON CONFLICT DO NOTHING`.
+
+### Nama jenis kegiatan
+
+- Nama jenis kegiatan diterjemahkan lewat kunci `activity.<slug>` (fungsi template `activity`).
+- Jenis kegiatan baru yang belum punya terjemahan tampil dengan nama dari database.
+
+### Data contoh (`desakita seed-demo`)
+
+- Perintah ini **khusus pengembangan** dan menolak berjalan jika `APP_ENV=production`. Aman dijalankan berulang kali.
+- Isinya: 8 desa wisata **fiktif** yang sudah terverifikasi dan punya koordinat, dengan 13 paket beserta foto ilustrasi:
+  - Bandung: Lembang dan Ciwidey;
+  - Yogyakarta: Cangkringan (Sleman) dan Imogiri (Bantul);
+  - Surabaya: Bubutan dan Bulak;
+  - Jakarta: Jagakarsa dan Kepulauan Seribu Selatan.
+- Setiap deskripsi diawali kalimat "Data contoh untuk mencoba DesaKita, bukan desa sungguhan". Nomor telepon `0812-0000-000x` adalah placeholder.
+- Akun pengelola contoh: `pengelola.demo@desakita.local` dengan kata sandi `demo12345`.
+- Bukti: `TestSeedDemo` (idempoten, jumlah desa/paket/foto, filter wilayah Surabaya, peta, login, menolak production), `TestSeedWithGeneratedQueries` (wilayah peluncuran), `TestActivityTypesTranslated`.

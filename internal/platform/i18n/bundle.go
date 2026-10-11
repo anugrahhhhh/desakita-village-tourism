@@ -61,10 +61,13 @@ func LangFrom(ctx context.Context) string {
 	return Default
 }
 
-// Negotiate picks the supported language the Accept-Language header prefers most, or ""
-// when it names none. Ties keep the header's order; q=0 excludes a language.
+// Negotiate picks a supported language from an Accept-Language header, or "" when it names
+// none. The site is Indonesian-first: Indonesian wins whenever the header accepts it at all
+// (many Indonesians browse with an English UI); otherwise the most preferred supported
+// language is used. q=0 excludes a language.
 func Negotiate(header string) string {
 	best, bestQ := "", 0.0
+	defaultOK := false
 	for _, part := range strings.Split(header, ",") {
 		tag, params, _ := strings.Cut(strings.TrimSpace(part), ";")
 		q := 1.0
@@ -79,9 +82,15 @@ func Negotiate(header string) string {
 		if primary == "in" { // legacy code for Indonesian
 			primary = "id"
 		}
+		if primary == Default && q > 0 {
+			defaultOK = true
+		}
 		if IsSupported(primary) && q > bestQ {
 			best, bestQ = primary, q
 		}
+	}
+	if defaultOK {
+		return Default
 	}
 	return best
 }

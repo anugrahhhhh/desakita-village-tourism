@@ -6,7 +6,7 @@
   <div class="space-y-6 lg:col-span-2">
     <nav class="text-sm" aria-label="{{t "nav.breadcrumb"}}"><a href="/admin/desa?status={{$v.Status}}" class="btn-link gap-1"><span class="icon size-4">{{template "i-chevron-left"}}</span>{{template "status_badge_text" $v.Status}}</a></nav>
     <div class="flex flex-wrap items-center gap-3">
-      <h1 class="text-2xl font-extrabold">{{$v.Name}}</h1>
+      <h1 class="page-title">{{$v.Name}}</h1>
       {{template "status_badge" $v.Status}}
     </div>
 

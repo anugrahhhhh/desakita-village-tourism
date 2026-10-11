@@ -22,6 +22,7 @@ services:
         condition: service_healthy
     environment:
       APP_ENV: ${APP_ENV:-development}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
       DATABASE_URL: postgres://desakita:${POSTGRES_PASSWORD:-desakita-dev}@db:5432/desakita?sslmode=disable
       LOG_LEVEL: ${LOG_LEVEL:-info}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
