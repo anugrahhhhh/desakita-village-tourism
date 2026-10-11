@@ -11,7 +11,7 @@
     <div class="flex flex-1 items-center gap-2 px-2 text-stone-600">
       <span class="icon size-5">{{template "i-search"}}</span>
       <input id="q-hero" name="q" maxlength="100" value="{{$f.Query}}" placeholder="{{t "search.query_hint"}}"
-             class="min-h-12 w-full bg-transparent text-base text-stone-900 placeholder:text-stone-500 focus:outline-none">
+             class="min-h-12 w-full bg-transparent text-base text-stone-900 placeholder:text-stone-500">
     </div>
     {{with $f.Regency}}<input type="hidden" name="wilayah" value="{{.}}">{{end}}
     {{with $f.ActivityType}}<input type="hidden" name="kegiatan" value="{{.}}">{{end}}

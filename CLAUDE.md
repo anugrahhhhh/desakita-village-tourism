@@ -15,6 +15,9 @@ sqlc generate                        # after editing queries/ or migrations/ (sq
 npm install && npm run build:css     # rebuild web/static/app.css after template/class changes (output is committed)
 npm run vendor:htmx                  # copy pinned htmx into web/static (committed)
 go test ./...                        # needs TEST_DATABASE_URL (user with CREATEDB)
+bash scripts/check.sh                # required before each commit: go vet, go test -race, govulncheck
+npm run vendor:assets                # copy font (OFL) + Lucide icons (ISC) into web/ (committed)
+PW_CHANNEL=msedge npm run e2e        # Playwright end-to-end + axe-core; e2e/fixture recreates desakita_e2e
 docker compose up --build            # app + PostgreSQL 16 (DB on host port 5433)
 ```
 
@@ -26,7 +29,9 @@ Windows Application Control blocks some Go test binaries here, unpredictably (e.
 wsl.exe -d Ubuntu -- bash -lc 'cd "/mnt/c/Users/ASUS/project golang 2" && TEST_DATABASE_URL="postgres://postgres@localhost:5432/postgres?sslmode=disable" go test ./...'
 ```
 
-`-race` additionally needs gcc in WSL (`sudo apt install build-essential`), which is not installed yet.
+`-race` needs gcc; `build-essential` is installed in WSL, so run `bash scripts/check.sh` there. Run the Playwright suite from Windows (it uses the installed Edge via `PW_CHANNEL=msedge`; CI installs Chromium).
+
+The module targets Go 1.26 (required by the patched `golang.org/x/image`).
 
 ## Layout and rules
 
@@ -45,4 +50,5 @@ wsl.exe -d Ubuntu -- bash -lc 'cd "/mnt/c/Users/ASUS/project golang 2" && TEST_D
 - Client IP comes from `httpx.ClientIP`. Proxy headers are trusted only with `TRUST_PROXY=true`. Never reintroduce chi's `middleware.RealIP`, because it lets clients spoof their IP past rate limits.
 - Rate limits are wired in `internal/app` through handler hooks (`LoginLimit`, `RegisterLimit`, `CreateLimit`, `ReportLimit`). They are in-memory, which is enough for a single instance.
 - `/admin` answers 404 to non-admins (`httpx.RequireAdmin`). Village status changes go through `village.Service` (Verify/Reject/Suspend/Reinstate) with guarded UPDATEs.
+- E2E tests live in `e2e/tests`. The fixture seeds known accounts (`sari@e2e.test`, `pengelola@e2e.test`, `admin@e2e.test`, password `rahasia123`). Every page must pass axe-core WCAG 2.1 A/AA at 375 px and 1280 px. Don't add `outline-none` and don't use `text-stone-500` for text on the sand background.
 - Keep CSP strict (`script-src 'self'`, `style-src 'self'`): no inline scripts or styles. htmx indicator styles are disabled via the `htmx-config` meta tag.

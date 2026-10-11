@@ -5,10 +5,13 @@
     "build:css": "node -e \"require('fs').mkdirSync('web/static',{recursive:true})\" && tailwindcss -i web/assets/app.css -o web/static/app.css --minify",
     "watch:css": "tailwindcss -i web/assets/app.css -o web/static/app.css --watch",
     "vendor:htmx": "node -e \"require('fs').copyFileSync('node_modules/htmx.org/dist/htmx.min.js','web/static/htmx.min.js')\"",
-    "vendor:assets": "node scripts/vendor-assets.mjs"
+    "vendor:assets": "node scripts/vendor-assets.mjs",
+    "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@fontsource/plus-jakarta-sans": "5.2.5",
+    "@playwright/test": "1.64.0",
     "@tailwindcss/cli": "4.1.11",
     "htmx.org": "2.0.4",
     "lucide-static": "0.469.0",

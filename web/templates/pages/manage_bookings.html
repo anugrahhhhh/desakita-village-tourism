@@ -29,7 +29,7 @@
 </ul>
 <div class="space-y-8">
   <section>
-    <h2 class="mb-3 text-lg font-bold">{{t "manage.bookings.pending"}} <span class="text-stone-500">({{len $d.Pending}})</span></h2>
+    <h2 class="mb-3 text-lg font-bold">{{t "manage.bookings.pending"}} <span class="text-stone-600">({{len $d.Pending}})</span></h2>
     <ul class="space-y-3">
       {{range $i, $r := $d.Pending}}{{if or (eq $d.Limit 0) (lt $i $d.Limit)}}
         <li><a href="{{$base}}/{{$r.ID}}" class="card flex flex-wrap items-center justify-between gap-2 border-amber-200 hover:border-amber-500">
@@ -42,7 +42,7 @@
     </ul>
   </section>
   <section>
-    <h2 class="mb-3 text-lg font-bold">{{t "manage.bookings.upcoming"}} <span class="text-stone-500">({{len $d.Upcoming}})</span></h2>
+    <h2 class="mb-3 text-lg font-bold">{{t "manage.bookings.upcoming"}} <span class="text-stone-600">({{len $d.Upcoming}})</span></h2>
     <ul class="space-y-3">
       {{range $i, $r := $d.Upcoming}}{{if or (eq $d.Limit 0) (lt $i $d.Limit)}}
         <li><a href="{{$base}}/{{$r.ID}}" class="card flex flex-wrap items-center justify-between gap-2 hover:border-brand-600">
@@ -55,7 +55,7 @@
     </ul>
   </section>
   <section>
-    <h2 class="mb-3 text-lg font-bold">{{t "manage.bookings.to_complete"}} <span class="text-stone-500">({{len $d.ToComplete}})</span></h2>
+    <h2 class="mb-3 text-lg font-bold">{{t "manage.bookings.to_complete"}} <span class="text-stone-600">({{len $d.ToComplete}})</span></h2>
     <ul class="space-y-3">
       {{range $i, $r := $d.ToComplete}}{{if or (eq $d.Limit 0) (lt $i $d.Limit)}}
         <li><a href="{{$base}}/{{$r.ID}}" class="card flex flex-wrap items-center justify-between gap-2 hover:border-brand-600">
