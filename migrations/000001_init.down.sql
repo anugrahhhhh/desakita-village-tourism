@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS reports;
+DROP TABLE IF EXISTS bookings;
+DROP TABLE IF EXISTS availability;
+DROP TABLE IF EXISTS media;
+DROP TABLE IF EXISTS package_activity_types;
+DROP TABLE IF EXISTS tour_packages;
+DROP TABLE IF EXISTS village_members;
+DROP TABLE IF EXISTS villages;
+DROP TABLE IF EXISTS activity_types;
+DROP TABLE IF EXISTS regions;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS users;
+DROP EXTENSION IF EXISTS citext;
