@@ -7,7 +7,7 @@
 </div>
 <nav class="mb-6 flex flex-wrap gap-2" aria-label="{{t "admin.filter"}}">
   {{range $d.Tabs}}
-    <a href="/admin?status={{.}}" class="inline-flex min-h-10 items-center rounded-full border px-4 text-sm {{if eq . $d.Status}}border-brand-700 bg-brand-600 text-white{{else}}border-stone-300 bg-white{{end}}">{{t (printf "village.status.%s" .)}}</a>
+    <a href="/admin?status={{.}}" class="inline-flex min-h-11 items-center rounded-full border px-4 text-sm {{if eq . $d.Status}}border-brand-700 bg-brand-600 text-white{{else}}border-stone-300 bg-white{{end}}">{{t (printf "village.status.%s" .)}}</a>
   {{end}}
 </nav>
 <ul class="space-y-3">

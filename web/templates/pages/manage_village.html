@@ -13,6 +13,18 @@
     <a href="/kelola/desa/{{$v.ID}}/pemesanan" class="btn-link">{{t "manage.bookings.open"}}</a>
   </div>
 </section>
+<details class="card mb-6 border-brand-100 bg-brand-50" {{if ne $v.Status "verified"}}open{{end}}>
+  <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-lg font-bold text-brand-900">
+    <span class="icon size-6">{{template "i-book-open-check"}}</span>{{t "guide.title"}}
+  </summary>
+  <ol class="mt-4 grid gap-3 sm:grid-cols-2">
+    <li class="flex gap-3 rounded-xl bg-white p-4"><span class="icon size-9 shrink-0 rounded-lg bg-brand-50 p-2 text-brand-800">{{template "i-house"}}</span><span><strong class="block">{{t "guide.step1.title"}}</strong>{{t "guide.step1.text"}}</span></li>
+    <li class="flex gap-3 rounded-xl bg-white p-4"><span class="icon size-9 shrink-0 rounded-lg bg-brand-50 p-2 text-brand-800">{{template "i-image"}}</span><span><strong class="block">{{t "guide.step2.title"}}</strong>{{t "guide.step2.text"}}</span></li>
+    <li class="flex gap-3 rounded-xl bg-white p-4"><span class="icon size-9 shrink-0 rounded-lg bg-brand-50 p-2 text-brand-800">{{template "i-calendar-days"}}</span><span><strong class="block">{{t "guide.step3.title"}}</strong>{{t "guide.step3.text"}}</span></li>
+    <li class="flex gap-3 rounded-xl bg-white p-4"><span class="icon size-9 shrink-0 rounded-lg bg-brand-50 p-2 text-brand-800">{{template "i-message-circle"}}</span><span><strong class="block">{{t "guide.step4.title"}}</strong>{{t "guide.step4.text"}}</span></li>
+  </ol>
+  <p class="mt-4 flex items-start gap-2 text-sm text-brand-900"><span class="icon mt-0.5 size-4">{{template "i-info"}}</span>{{t "guide.help"}}</p>
+</details>
 <div class="grid gap-4 sm:grid-cols-2">
   <a href="/kelola/desa/{{$v.ID}}/paket" class="card hover:border-brand-600">
     <h2 class="text-lg font-semibold">{{t "manage.village.packages"}}</h2>

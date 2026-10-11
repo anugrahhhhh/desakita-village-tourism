@@ -1,67 +1,113 @@
 {{define "content"}}
 {{$d := .Data}}{{$f := $d.Filter}}
-<section class="py-6">
-  <h1 class="text-3xl font-bold text-brand-900">{{t "home.heading"}}</h1>
-  <p class="mt-3 max-w-2xl text-lg text-stone-700">{{t "home.lead"}}</p>
+
+<section class="-mx-4 -mt-6 mb-8 bg-brand-800 px-4 pb-8 pt-10 text-white sm:mx-0 sm:mt-0 sm:rounded-3xl sm:px-10 sm:py-14">
+  <p class="badge bg-brand-100 text-brand-900"><span class="icon size-4">{{template "i-sprout"}}</span>{{t "home.kicker"}}</p>
+  <h1 class="mt-4 max-w-3xl text-3xl font-extrabold leading-tight sm:text-5xl">{{t "home.heading"}}</h1>
+  <p class="mt-3 max-w-2xl text-lg text-brand-100">{{t "home.lead"}}</p>
+
+  <form method="get" action="/" role="search" class="mt-6 flex max-w-2xl flex-col gap-2 rounded-2xl bg-white p-2 sm:flex-row">
+    <label for="q-hero" class="sr-only">{{t "search.query"}}</label>
+    <div class="flex flex-1 items-center gap-2 px-2 text-stone-600">
+      <span class="icon size-5">{{template "i-search"}}</span>
+      <input id="q-hero" name="q" maxlength="100" value="{{$f.Query}}" placeholder="{{t "search.query_hint"}}"
+             class="min-h-12 w-full bg-transparent text-base text-stone-900 placeholder:text-stone-500 focus:outline-none">
+    </div>
+    {{with $f.Regency}}<input type="hidden" name="wilayah" value="{{.}}">{{end}}
+    {{with $f.ActivityType}}<input type="hidden" name="kegiatan" value="{{.}}">{{end}}
+    <button type="submit" class="btn-accent">{{t "search.submit"}}</button>
+  </form>
 </section>
 
-<form method="get" action="/" class="card mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5" role="search">
-  <div class="lg:col-span-2">
-    <label for="q" class="field-label">{{t "search.query"}}</label>
-    <input id="q" name="q" maxlength="100" class="field-input" value="{{$f.Query}}" placeholder="{{t "search.query_hint"}}">
-  </div>
-  <div>
-    <label for="wilayah" class="field-label">{{t "search.regency"}}</label>
-    <select id="wilayah" name="wilayah" class="field-input">
-      <option value="">{{t "search.all"}}</option>
-      {{range $d.Regencies}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $f.Regency}}selected{{end}}>{{.Name}}, {{.Province}}</option>{{end}}
-    </select>
-  </div>
-  <div>
-    <label for="kegiatan" class="field-label">{{t "search.activity"}}</label>
-    <select id="kegiatan" name="kegiatan" class="field-input">
-      <option value="">{{t "search.all"}}</option>
-      {{range $d.ActivityTypes}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $f.ActivityType}}selected{{end}}>{{.Name}}</option>{{end}}
-    </select>
-  </div>
-  <div class="grid grid-cols-2 gap-2">
-    <div>
-      <label for="harga_min" class="field-label">{{t "search.min_price"}}</label>
-      <input id="harga_min" name="harga_min" inputmode="numeric" class="field-input" value="{{$f.MinPrice}}">
-    </div>
-    <div>
-      <label for="harga_maks" class="field-label">{{t "search.max_price"}}</label>
-      <input id="harga_maks" name="harga_maks" inputmode="numeric" class="field-input" value="{{$f.MaxPrice}}">
-    </div>
-  </div>
-  <div class="flex flex-wrap items-center gap-4 sm:col-span-2 lg:col-span-5">
-    <button type="submit" class="btn-primary">{{t "search.submit"}}</button>
-    {{if $d.Filtered}}<a href="/" class="btn-link">{{t "search.reset"}}</a>{{end}}
-  </div>
-</form>
+{{with $d.ActivityTypes}}
+  <nav class="mb-6" aria-label="{{t "search.activity"}}">
+    <ul class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:flex-wrap sm:px-0">
+      <li class="shrink-0"><a href="/" class="chip {{if eq $f.ActivityType ""}}border-brand-700 bg-brand-700 text-white hover:text-white{{end}}" {{if eq $f.ActivityType ""}}aria-current="true"{{end}}>{{t "search.all"}}</a></li>
+      {{range .}}
+        {{$id := printf "%d" .ID}}
+        <li class="shrink-0"><a href="/?kegiatan={{.ID}}" class="chip {{if eq $id $f.ActivityType}}border-brand-700 bg-brand-700 text-white hover:text-white{{end}}" {{if eq $id $f.ActivityType}}aria-current="true"{{end}}>{{.Name}}</a></li>
+      {{end}}
+    </ul>
+  </nav>
+{{end}}
 
-<h2 class="mb-4 text-2xl font-bold">{{if $d.Filtered}}{{t "search.results"}}{{else}}{{t "search.all_packages"}}{{end}}</h2>
-<ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+<details class="card mb-8" {{if $d.Filtered}}open{{end}}>
+  <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between font-semibold [&::-webkit-details-marker]:hidden">
+    <span class="flex items-center gap-2"><span class="icon size-5 text-brand-700">{{template "i-list-checks"}}</span>{{t "search.more_filters"}}</span>
+    <span class="icon size-5 text-stone-600">{{template "i-chevron-right"}}</span>
+  </summary>
+  <form method="get" action="/" class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="sm:col-span-2 lg:col-span-1">
+      <label for="q" class="field-label">{{t "search.query"}}</label>
+      <input id="q" name="q" maxlength="100" class="field-input" value="{{$f.Query}}">
+    </div>
+    <div>
+      <label for="wilayah" class="field-label">{{t "search.regency"}}</label>
+      <select id="wilayah" name="wilayah" class="field-input">
+        <option value="">{{t "search.all"}}</option>
+        {{range $d.Regencies}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $f.Regency}}selected{{end}}>{{.Name}}, {{.Province}}</option>{{end}}
+      </select>
+    </div>
+    <div>
+      <label for="kegiatan" class="field-label">{{t "search.activity"}}</label>
+      <select id="kegiatan" name="kegiatan" class="field-input">
+        <option value="">{{t "search.all"}}</option>
+        {{range $d.ActivityTypes}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $f.ActivityType}}selected{{end}}>{{.Name}}</option>{{end}}
+      </select>
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+      <div>
+        <label for="harga_min" class="field-label">{{t "search.min_price"}}</label>
+        <input id="harga_min" name="harga_min" inputmode="numeric" class="field-input" value="{{$f.MinPrice}}">
+      </div>
+      <div>
+        <label for="harga_maks" class="field-label">{{t "search.max_price"}}</label>
+        <input id="harga_maks" name="harga_maks" inputmode="numeric" class="field-input" value="{{$f.MaxPrice}}">
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-4 sm:col-span-2 lg:col-span-4">
+      <button type="submit" class="btn-primary"><span class="icon size-5">{{template "i-search"}}</span>{{t "search.submit"}}</button>
+      {{if $d.Filtered}}<a href="/" class="btn-link">{{t "search.reset"}}</a>{{end}}
+    </div>
+  </form>
+</details>
+
+<h2 class="mb-4 text-2xl font-extrabold">{{if $d.Filtered}}{{t "search.results"}}{{else}}{{t "search.all_packages"}}{{end}}</h2>
+<ul class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
   {{range $d.Results.Results}}
-    <li>
-      <a href="/desa/{{.VillageSlug}}/paket/{{.ID}}" class="card block h-full overflow-hidden p-0 hover:border-brand-600">
-        {{if .CoverPath}}<img src="/media/{{.CoverPath}}" alt="{{.CoverAlt}}" width="{{.CoverWidth}}" height="{{.CoverHeight}}" class="aspect-[4/3] w-full object-cover" loading="lazy">
-        {{else}}<div class="aspect-[4/3] w-full bg-brand-50" aria-hidden="true"></div>{{end}}
-        <div class="p-4">
-          <h3 class="font-semibold">{{.Name}}</h3>
-          <p class="text-sm text-stone-700">{{.VillageName}} · {{.DistrictName}}, {{.RegencyName}}</p>
-          <p class="mt-2"><strong>{{rupiah .PricePerPersonIDR}}</strong> {{t "package.per_person"}} · {{template "duration" .}}</p>
-        </div>
-      </a>
-    </li>
+    <li><a href="/desa/{{.VillageSlug}}/paket/{{.ID}}" class="{{template "card_link_class"}}">{{template "package_card_body" .}}</a></li>
   {{else}}
-    <li class="card text-stone-700 sm:col-span-2 lg:col-span-3">{{if $d.Filtered}}{{t "search.empty"}}{{else}}{{t "search.no_packages_yet"}}{{end}}</li>
+    <li class="card flex items-start gap-3 text-stone-700 sm:col-span-2 lg:col-span-3">
+      <span class="icon mt-0.5 size-5 text-brand-700">{{template "i-info"}}</span>
+      <span>{{if $d.Filtered}}{{t "search.empty"}} <a href="/" class="btn-link">{{t "search.reset"}}</a>{{else}}{{t "search.no_packages_yet"}}{{end}}</span>
+    </li>
   {{end}}
 </ul>
 {{if or $d.PrevQuery $d.NextQuery}}
-  <nav class="mt-6 flex justify-between" aria-label="{{t "search.pagination"}}">
-    {{if $d.PrevQuery}}<a href="/?{{$d.PrevQuery}}" class="btn-link">‹ {{t "search.prev"}}</a>{{else}}<span></span>{{end}}
-    {{if $d.NextQuery}}<a href="/?{{$d.NextQuery}}" class="btn-link">{{t "search.next"}} ›</a>{{end}}
+  <nav class="mt-6 flex justify-between gap-3" aria-label="{{t "search.pagination"}}">
+    {{if $d.PrevQuery}}<a href="/?{{$d.PrevQuery}}" class="btn-secondary"><span class="icon size-5">{{template "i-chevron-left"}}</span>{{t "search.prev"}}</a>{{else}}<span></span>{{end}}
+    {{if $d.NextQuery}}<a href="/?{{$d.NextQuery}}" class="btn-secondary">{{t "search.next"}}<span class="icon size-5">{{template "i-chevron-right"}}</span></a>{{end}}
   </nav>
 {{end}}
+
+<section class="mt-14" aria-labelledby="how-heading">
+  <h2 id="how-heading" class="text-2xl font-extrabold">{{t "home.how.title"}}</h2>
+  <ol class="mt-5 grid gap-4 sm:grid-cols-3">
+    <li class="card">
+      <span class="icon size-11 rounded-xl bg-brand-50 p-2.5 text-brand-800">{{template "i-search"}}</span>
+      <h3 class="mt-3 font-bold">1. {{t "home.how.find"}}</h3>
+      <p class="mt-1 text-stone-700">{{t "home.how.find_text"}}</p>
+    </li>
+    <li class="card">
+      <span class="icon size-11 rounded-xl bg-brand-50 p-2.5 text-brand-800">{{template "i-calendar-days"}}</span>
+      <h3 class="mt-3 font-bold">2. {{t "home.how.request"}}</h3>
+      <p class="mt-1 text-stone-700">{{t "home.how.request_text"}}</p>
+    </li>
+    <li class="card">
+      <span class="icon size-11 rounded-xl bg-brand-50 p-2.5 text-brand-800">{{template "i-message-circle"}}</span>
+      <h3 class="mt-3 font-bold">3. {{t "home.how.confirm"}}</h3>
+      <p class="mt-1 text-stone-700">{{t "home.how.confirm_text"}}</p>
+    </li>
+  </ol>
+</section>
 {{end}}

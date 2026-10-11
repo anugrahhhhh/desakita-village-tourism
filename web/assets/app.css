@@ -1,42 +1,130 @@
 @import "tailwindcss";
 @source "../templates";
 
+/* Plus Jakarta Sans (SIL OFL 1.1, see /static/fonts/OFL.txt). Latin subset, used weights only. */
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/static/fonts/plus-jakarta-sans-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/static/fonts/plus-jakarta-sans-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/static/fonts/plus-jakarta-sans-latin-700-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/static/fonts/plus-jakarta-sans-latin-800-normal.woff2") format("woff2");
+}
+
+/* Palette: every text/background pair used in templates was checked for >= 4.5:1 contrast. */
 @theme {
-  --color-brand-50: #f0f7f1;
-  --color-brand-100: #d9ecdc;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-sand: #faf7f2;
+  --color-brand-50: #eef6ef;
+  --color-brand-100: #d6eadb;
   --color-brand-600: #2f7a3e;
   --color-brand-700: #256332;
+  --color-brand-800: #1d4f28;
   --color-brand-900: #163b1e;
+  --color-clay-50: #fbf1ec;
+  --color-clay-100: #f6dccf;
+  --color-clay-600: #b04a20;
+  --color-clay-700: #8f3b18;
 }
 
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-sand font-sans text-stone-900 antialiased;
+  }
+  /* Visible keyboard focus everywhere; mouse clicks don't show the ring. */
+  :focus-visible {
+    outline: 3px solid var(--color-clay-600);
+    outline-offset: 2px;
+    border-radius: 0.375rem;
+  }
+  h1, h2, h3 {
+    @apply tracking-tight;
+  }
+  [hidden] {
+    display: none !important;
+  }
+  summary.list-none::-webkit-details-marker {
+    display: none;
+  }
+}
+
+/* Icons: the SVG fills the sized wrapper. */
+@utility icon {
+  @apply inline-flex shrink-0 items-center justify-center;
+  & > svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* Buttons and links: >= 44px touch targets. */
 @utility btn {
-    @apply inline-flex min-h-12 items-center justify-center rounded-lg px-5 text-base font-semibold;
+  @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-base font-semibold transition-colors;
 }
-
 @utility btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600;
+  @apply btn bg-brand-700 text-white shadow-sm hover:bg-brand-800;
 }
-
+@utility btn-accent {
+  @apply btn bg-clay-600 text-white shadow-sm hover:bg-clay-700;
+}
+@utility btn-secondary {
+  @apply btn border border-stone-300 bg-white text-stone-900 hover:border-brand-700 hover:text-brand-800;
+}
 @utility btn-danger {
-    @apply btn bg-red-700 text-white hover:bg-red-800;
+  @apply btn bg-red-700 text-white hover:bg-red-800;
 }
-
 @utility btn-link {
-    @apply font-semibold text-brand-700 underline underline-offset-2;
+  @apply inline-flex min-h-11 items-center font-semibold text-brand-700 underline decoration-2 underline-offset-4 hover:text-brand-900;
+}
+@utility nav-link {
+  @apply inline-flex min-h-11 items-center rounded-lg px-3 font-semibold text-stone-800 hover:bg-brand-50 hover:text-brand-900;
 }
 
+/* Forms */
 @utility field-label {
-    @apply mb-1 block text-sm font-semibold text-stone-800;
+  @apply mb-1.5 block text-sm font-semibold text-stone-800;
 }
-
 @utility field-input {
-    @apply block min-h-12 w-full rounded-lg border border-stone-300 bg-white px-3 text-base focus:border-brand-600 focus:outline-2 focus:outline-brand-100;
+  @apply block min-h-12 w-full rounded-xl border border-stone-300 bg-white px-3.5 text-base text-stone-900 placeholder:text-stone-500 focus:border-brand-700;
 }
-
 @utility field-error {
-    @apply mt-1 text-sm text-red-700;
+  @apply mt-1.5 text-sm font-semibold text-red-700;
+}
+@utility field-hint {
+  @apply mt-1.5 text-sm text-stone-600;
 }
 
+/* Surfaces */
 @utility card {
-    @apply rounded-xl border border-stone-200 bg-white p-5 shadow-sm;
+  @apply rounded-2xl border border-stone-200 bg-white p-5 shadow-sm;
+}
+@utility chip {
+  @apply inline-flex min-h-11 items-center gap-2 rounded-full border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-800 hover:border-brand-700 hover:text-brand-900;
+}
+@utility badge {
+  @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold;
 }

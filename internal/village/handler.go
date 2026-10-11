@@ -27,6 +27,9 @@ type PackageCard struct {
 	CoverWidth, CoverHeight      int
 }
 
+// Meta is empty: on a village page the location is already in the heading.
+func (c PackageCard) Meta() string { return "" }
+
 // CoverAlt is the cover photo's caption, or the package name.
 func (c PackageCard) CoverAlt() string {
 	if c.CoverCaption != "" {

@@ -1,0 +1,28 @@
+{{/* Package card body; the caller wraps it in <a class="{{template "card_link_class"}}">.
+     . has Name, PricePerPersonIDR, DurationDays, DurationNights, CoverPath, CoverAlt,
+     CoverWidth, CoverHeight and Meta (location line, may be empty). */}}
+{{define "package_card_body"}}
+  <div class="relative aspect-[4/3] overflow-hidden bg-brand-50">
+    {{if .CoverPath}}
+      <img src="/media/{{.CoverPath}}" alt="{{.CoverAlt}}" width="{{.CoverWidth}}" height="{{.CoverHeight}}" loading="lazy"
+           class="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]">
+    {{else}}
+      <div class="flex size-full items-center justify-center text-brand-700" aria-hidden="true">
+        <span class="icon size-14 opacity-60">{{template "i-leaf"}}</span>
+      </div>
+    {{end}}
+  </div>
+  <div class="flex flex-1 flex-col gap-2 p-4">
+    <h3 class="text-lg font-bold leading-snug text-stone-900">{{.Name}}</h3>
+    {{with .Meta}}<p class="flex items-start gap-1.5 text-sm text-stone-700"><span class="icon mt-0.5 size-4 text-clay-700">{{template "i-map-pin"}}</span>{{.}}</p>{{end}}
+    <p class="mt-auto flex flex-wrap items-baseline gap-x-2 pt-2">
+      <span class="text-xl font-extrabold text-brand-800">{{rupiah .PricePerPersonIDR}}</span>
+      <span class="text-sm text-stone-600">{{t "package.per_person"}}</span>
+    </p>
+    <p class="flex items-center gap-1.5 text-sm text-stone-700">
+      <span class="icon size-4">{{template "i-clock"}}</span>{{template "duration" .}}
+    </p>
+  </div>
+{{end}}
+
+{{define "card_link_class"}}group flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-brand-600 hover:shadow-md{{end}}

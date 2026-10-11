@@ -2,7 +2,7 @@
 {{define "content"}}
 {{$d := .Data}}{{$p := $d.Package}}{{$m := $d.Month}}{{$csrf := .CSRF}}
 {{$base := printf "/kelola/desa/%d/kalender/%d" $p.VillageID $p.ID}}
-<nav class="mb-6 flex flex-wrap gap-2 text-sm">
+<nav class="mb-6 flex flex-wrap items-center gap-x-2 text-sm">
   <a href="/kelola" class="btn-link">{{t "manage.nav.all_villages"}}</a><span aria-hidden="true">›</span>
   <a href="/kelola/desa/{{$d.Village.ID}}" class="btn-link">{{$d.Village.Name}}</a>
 </nav>
@@ -12,7 +12,7 @@
 {{if gt (len $d.Packages) 1}}
   <ul class="mb-6 flex flex-wrap gap-2">
     {{range $d.Packages}}
-      <li><a href="/kelola/desa/{{.VillageID}}/kalender/{{.ID}}?bulan={{$m.First.Format "2006-01"}}" class="inline-flex min-h-10 items-center rounded-full border px-4 text-sm {{if eq .ID $p.ID}}border-brand-700 bg-brand-600 text-white{{else}}border-stone-300 bg-white{{end}}">{{.Name}}</a></li>
+      <li><a href="/kelola/desa/{{.VillageID}}/kalender/{{.ID}}?bulan={{$m.First.Format "2006-01"}}" class="inline-flex min-h-11 items-center rounded-full border px-4 text-sm {{if eq .ID $p.ID}}border-brand-700 bg-brand-600 text-white{{else}}border-stone-300 bg-white{{end}}">{{.Name}}</a></li>
     {{end}}
   </ul>
 {{end}}
@@ -63,7 +63,7 @@
             <span class="text-[11px]">{{if .Day.Closed}}{{t "calendar.closed"}}{{else}}{{.Day.Reserved}}/{{.Day.Quota}}{{end}}</span>
           </a>
         {{else}}
-          <span class="flex min-h-14 items-center justify-center rounded-lg text-stone-400">{{.Date.Day}}</span>
+          <span class="flex min-h-14 items-center justify-center rounded-lg bg-stone-100 text-stone-600">{{.Date.Day}}</span>
         {{end}}
       {{end}}
     </div>

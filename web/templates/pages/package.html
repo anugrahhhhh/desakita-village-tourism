@@ -1,39 +1,120 @@
 {{define "title"}}{{.Data.Package.Name}} · {{.Data.Village.Name}}{{end}}
 {{define "content"}}
-{{$v := .Data.Village}}{{$p := .Data.Package}}
-{{if .Data.Preview}}<div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">{{t "package.preview"}}</div>{{end}}
-<nav class="mb-4 text-sm"><a href="/desa/{{$v.Slug}}" class="btn-link">{{$v.Name}}</a></nav>
-<article>
-  <h1 class="text-3xl font-bold text-brand-900">{{$p.Name}}</h1>
-  <p class="mt-2 text-lg text-stone-800"><strong>{{rupiah $p.PricePerPersonIDR}}</strong> {{t "package.per_person"}} · {{template "duration" $p}}</p>
-  {{with .Data.ActivityTypes}}
-    <ul class="mt-3 flex flex-wrap gap-2">{{range .}}<li class="rounded-full bg-brand-50 px-3 py-1 text-sm text-brand-900">{{.Name}}</li>{{end}}</ul>
-  {{end}}
-  {{with .Data.Photos}}
-    <ul class="my-6 flex snap-x gap-3 overflow-x-auto pb-2">
-      {{range .}}<li class="w-72 shrink-0 snap-start sm:w-96"><img src="/media/{{.Path}}" alt="{{.Alt $p.Name}}" width="{{.Width}}" height="{{.Height}}" class="aspect-[4/3] w-full rounded-xl object-cover" loading="lazy"></li>{{end}}
+{{$v := .Data.Village}}{{$p := .Data.Package}}{{$photos := .Data.Photos}}
+{{if .Data.Preview}}
+  <div class="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-100 px-4 py-3 text-amber-900">
+    <span class="icon mt-0.5 size-5">{{template "i-info"}}</span><span>{{t "package.preview"}}</span>
+  </div>
+{{end}}
+
+<nav class="mb-4 text-sm" aria-label="{{t "nav.breadcrumb"}}">
+  <a href="/desa/{{$v.Slug}}" class="btn-link gap-1"><span class="icon size-4">{{template "i-chevron-left"}}</span>{{$v.Name}}</a>
+</nav>
+
+{{/* Gallery: one large photo; the rest scroll sideways on phones and form a grid on desktop. */}}
+{{if $photos}}
+  <section class="-mx-4 mb-6 sm:mx-0" aria-label="{{t "package.gallery"}}">
+    <div class="grid gap-2 lg:grid-cols-4">
+      {{range $i, $ph := $photos}}{{if eq $i 0}}
+        <img src="/media/{{$ph.Path}}" alt="{{$ph.Alt $p.Name}}" width="{{$ph.Width}}" height="{{$ph.Height}}" loading="lazy"
+             class="aspect-[4/3] w-full object-cover sm:rounded-2xl {{if gt (len $photos) 1}}lg:col-span-3{{else}}lg:col-span-4 lg:aspect-[21/9]{{end}}">
+      {{end}}{{end}}
+      {{if gt (len $photos) 1}}
+        <ul class="flex snap-x gap-2 overflow-x-auto px-4 pb-1 sm:px-0 lg:col-span-1 lg:flex-col lg:overflow-visible lg:p-0">
+          {{range $i, $ph := $photos}}{{if and (gt $i 0) (lt $i 5)}}
+            <li class="w-40 shrink-0 snap-start lg:min-h-0 lg:w-auto lg:flex-1 {{if ge $i 3}}lg:hidden{{end}}">
+              <img src="/media/{{$ph.Path}}" alt="{{$ph.Alt $p.Name}}" width="{{$ph.Width}}" height="{{$ph.Height}}" loading="lazy"
+                   class="aspect-[4/3] w-full rounded-xl object-cover lg:aspect-auto lg:h-full">
+            </li>
+          {{end}}{{end}}
+        </ul>
+      {{end}}
+    </div>
+  </section>
+{{end}}
+
+<div class="grid gap-8 lg:grid-cols-3">
+  <article class="lg:col-span-2">
+    <h1 class="text-3xl font-extrabold leading-tight text-brand-900 sm:text-4xl">{{$p.Name}}</h1>
+    <p class="mt-2 flex flex-wrap items-center gap-x-1.5 text-stone-700">
+      <span class="icon size-5 text-clay-700">{{template "i-map-pin"}}</span>
+      <a href="/desa/{{$v.Slug}}" class="inline-flex min-h-11 items-center font-semibold text-stone-800 underline decoration-stone-300 underline-offset-4 hover:text-brand-800">{{$v.Name}}</a>
+      <span>· {{$v.DistrictName}}, {{$v.RegencyName}}</span>
+    </p>
+
+    <ul class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <li class="flex items-center gap-3 rounded-xl bg-white p-3 ring-1 ring-stone-200">
+        <span class="icon size-9 rounded-lg bg-brand-50 p-2 text-brand-800">{{template "i-clock"}}</span>
+        <span><span class="block text-xs text-stone-600">{{t "package.info.duration"}}</span><span class="font-semibold">{{template "duration" $p}}</span></span>
+      </li>
+      <li class="flex items-center gap-3 rounded-xl bg-white p-3 ring-1 ring-stone-200">
+        <span class="icon size-9 rounded-lg bg-brand-50 p-2 text-brand-800">{{template "i-users"}}</span>
+        <span><span class="block text-xs text-stone-600">{{t "package.info.quota"}}</span><span class="font-semibold">{{t "booking.people" $p.DefaultQuota}}</span></span>
+      </li>
+      <li class="col-span-2 flex items-center gap-3 rounded-xl bg-white p-3 ring-1 ring-stone-200 sm:col-span-1">
+        <span class="icon size-9 rounded-lg bg-brand-50 p-2 text-brand-800">{{template "i-wallet"}}</span>
+        <span><span class="block text-xs text-stone-600">{{t "package.info.payment"}}</span><span class="font-semibold">{{t "package.info.payment_value"}}</span></span>
+      </li>
     </ul>
-  {{end}}
-  {{with $p.Description}}<p class="mt-6 whitespace-pre-line text-lg leading-relaxed text-stone-800">{{.}}</p>{{end}}
-  {{if .Data.Preview}}
-    <p class="mt-8 rounded-lg bg-stone-100 px-4 py-3 text-stone-700">{{t "package.preview_no_booking"}}</p>
-  {{else}}
-    <a href="/pesan/paket/{{$p.ID}}" class="btn-primary mt-8 w-full sm:w-auto">{{t "package.book"}}</a>
-  {{end}}
-</article>
+
+    {{with .Data.ActivityTypes}}
+      <ul class="mt-4 flex flex-wrap gap-2" aria-label="{{t "package.field.activity_types"}}">
+        {{range .}}<li class="badge bg-brand-50 text-brand-900"><span class="icon size-4">{{template "i-leaf"}}</span>{{.Name}}</li>{{end}}
+      </ul>
+    {{end}}
+
+    {{with $p.Description}}
+      <h2 class="mt-8 text-xl font-bold">{{t "package.about"}}</h2>
+      <p class="mt-3 whitespace-pre-line text-lg leading-relaxed text-stone-800">{{.}}</p>
+    {{end}}
+
+    <section class="mt-8 rounded-2xl bg-white p-5 ring-1 ring-stone-200">
+      <h2 class="flex items-center gap-2 text-lg font-bold"><span class="icon size-5 text-brand-700">{{template "i-list-checks"}}</span>{{t "package.how.title"}}</h2>
+      <ol class="mt-3 space-y-3 text-stone-800">
+        <li class="flex gap-3"><span class="badge size-7 shrink-0 justify-center bg-brand-700 p-0 text-white">1</span><span>{{t "package.how.step1"}}</span></li>
+        <li class="flex gap-3"><span class="badge size-7 shrink-0 justify-center bg-brand-700 p-0 text-white">2</span><span>{{t "package.how.step2"}}</span></li>
+        <li class="flex gap-3"><span class="badge size-7 shrink-0 justify-center bg-brand-700 p-0 text-white">3</span><span>{{t "package.how.step3"}}</span></li>
+      </ol>
+    </section>
+  </article>
+
+  {{/* Desktop booking box; phones use the bar fixed to the bottom of the screen. */}}
+  <aside class="hidden lg:block">
+    <div class="card sticky top-24 space-y-4">
+      <p><span class="text-3xl font-extrabold text-brand-800">{{rupiah $p.PricePerPersonIDR}}</span> <span class="text-stone-600">{{t "package.per_person"}}</span></p>
+      {{if .Data.Preview}}
+        <p class="rounded-xl bg-stone-100 px-4 py-3 text-stone-700">{{t "package.preview_no_booking"}}</p>
+      {{else}}
+        <a href="/pesan/paket/{{$p.ID}}" class="btn-accent w-full"><span class="icon size-5">{{template "i-calendar-days"}}</span>{{t "package.book"}}</a>
+        <p class="flex items-start gap-2 text-sm text-stone-600"><span class="icon mt-0.5 size-4">{{template "i-shield-check"}}</span>{{t "package.no_payment_now"}}</p>
+      {{end}}
+    </div>
+  </aside>
+</div>
 
 {{if and .Viewer (not .Data.Preview)}}
   <details class="mt-10 text-sm text-stone-700">
-    <summary class="cursor-pointer">{{t "report.summary"}}</summary>
+    <summary class="inline-flex min-h-11 cursor-pointer items-center gap-2 font-semibold"><span class="icon size-4">{{template "i-flag"}}</span>{{t "report.summary"}}</summary>
     <form method="post" action="/lapor" class="mt-3 max-w-xl space-y-3">
       <input type="hidden" name="csrf_token" value="{{.CSRF}}">
       <input type="hidden" name="target_type" value="package">
-      <input type="hidden" name="target_id" value="{{.Data.Package.ID}}">
+      <input type="hidden" name="target_id" value="{{$p.ID}}">
       <input type="hidden" name="back" value="{{.Path}}">
       <label for="reason" class="field-label">{{t "report.reason"}}</label>
       <textarea id="reason" name="reason" rows="3" maxlength="1000" required class="field-input py-2"></textarea>
-      <button type="submit" class="btn-link text-red-800">{{t "report.submit"}}</button>
+      <button type="submit" class="btn-secondary">{{t "report.submit"}}</button>
     </form>
   </details>
+{{end}}
+
+{{if .Data.Preview}}{{else}}
+  {{/* Phone-only booking bar fixed to the bottom; the spacer keeps the footer reachable. */}}
+  <div class="h-20 lg:hidden" aria-hidden="true"></div>
+  <div class="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200 bg-white/95 px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur lg:hidden">
+    <div class="mx-auto flex max-w-6xl items-center justify-between gap-3">
+      <p class="leading-tight"><span class="block text-lg font-extrabold text-brand-800">{{rupiah $p.PricePerPersonIDR}}</span><span class="text-sm text-stone-600">{{t "package.per_person"}}</span></p>
+      <a href="/pesan/paket/{{$p.ID}}" class="btn-accent shrink-0 px-6">{{t "package.book_short"}}</a>
+    </div>
+  </div>
 {{end}}
 {{end}}

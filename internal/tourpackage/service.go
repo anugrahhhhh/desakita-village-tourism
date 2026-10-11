@@ -504,6 +504,11 @@ type SearchResult struct {
 	CoverWidth, CoverHeight      int
 }
 
+// Meta is the location line shown on search result cards.
+func (r SearchResult) Meta() string {
+	return r.VillageName + " · " + r.DistrictName + ", " + r.RegencyName
+}
+
 // CoverAlt is the cover photo's caption, or the package name.
 func (r SearchResult) CoverAlt() string {
 	if r.CoverCaption != "" {

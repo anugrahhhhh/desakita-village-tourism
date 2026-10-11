@@ -1,58 +1,74 @@
 {{define "title"}}{{.Data.Village.Name}}{{end}}
 {{define "content"}}
-{{$v := .Data.Village}}
-{{if .Data.Preview}}<div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">{{t "village.preview"}}</div>{{end}}
-<article>
-  <header class="mb-6">
-    <h1 class="text-3xl font-bold text-brand-900">{{$v.Name}}</h1>
-    <p class="mt-1 text-stone-700">{{$v.DistrictName}}, {{$v.RegencyName}}</p>
-  </header>
-  {{with .Data.Photos}}
-    <ul class="mb-6 flex snap-x gap-3 overflow-x-auto pb-2">
-      {{range .}}<li class="w-72 shrink-0 snap-start sm:w-96"><img src="/media/{{.Path}}" alt="{{.Alt $v.Name}}" width="{{.Width}}" height="{{.Height}}" class="aspect-[4/3] w-full rounded-xl object-cover" loading="lazy"></li>{{end}}
-    </ul>
-  {{end}}
-  <div class="grid gap-8 lg:grid-cols-3">
-    <div class="lg:col-span-2">
-      {{with $v.Description}}<p class="whitespace-pre-line text-lg leading-relaxed text-stone-800">{{.}}</p>{{end}}
-
-      <h2 class="mb-4 mt-8 text-2xl font-bold">{{t "village.packages"}}</h2>
-      <ul class="grid gap-4 sm:grid-cols-2">
-        {{range .Data.Packages}}
-          <li>
-            <a href="/desa/{{$v.Slug}}/paket/{{.ID}}" class="card block overflow-hidden p-0 hover:border-brand-600">
-              {{if .CoverPath}}<img src="/media/{{.CoverPath}}" alt="{{.CoverAlt}}" width="{{.CoverWidth}}" height="{{.CoverHeight}}" class="aspect-[4/3] w-full object-cover" loading="lazy">{{end}}
-              <div class="p-4">
-                <h3 class="font-semibold">{{.Name}}</h3>
-                <p class="text-stone-700">{{rupiah .PricePerPersonIDR}} {{t "package.per_person"}} · {{template "duration" .}}</p>
-              </div>
-            </a>
-          </li>
-        {{else}}
-          <li class="text-stone-700">{{t "village.no_packages"}}</li>
-        {{end}}
-      </ul>
-    </div>
-    <aside class="card h-fit space-y-2">
-      <h2 class="text-lg font-bold">{{t "village.contact"}}</h2>
-      {{with $v.Address}}<p>{{.}}</p>{{end}}
-      <p>{{t "village.field.contact_phone"}}: <a href="tel:{{$v.ContactPhone}}" class="btn-link">{{$v.ContactPhone}}</a></p>
-      {{with $v.ContactWhatsApp}}<p>{{t "village.field.contact_whatsapp"}}: {{.}}</p>{{end}}
-    </aside>
+{{$v := .Data.Village}}{{$photos := .Data.Photos}}
+{{if .Data.Preview}}
+  <div class="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-100 px-4 py-3 text-amber-900">
+    <span class="icon mt-0.5 size-5">{{template "i-info"}}</span><span>{{t "village.preview"}}</span>
   </div>
-</article>
+{{end}}
+
+<header class="mb-6">
+  <h1 class="text-3xl font-extrabold leading-tight text-brand-900 sm:text-4xl">{{$v.Name}}</h1>
+  <p class="mt-2 flex items-center gap-1.5 text-stone-700"><span class="icon size-5 text-clay-700">{{template "i-map-pin"}}</span>{{$v.DistrictName}}, {{$v.RegencyName}}</p>
+</header>
+
+{{if $photos}}
+  <section class="-mx-4 mb-8 sm:mx-0" aria-label="{{t "village.gallery"}}">
+    <ul class="flex snap-x gap-2 overflow-x-auto px-4 pb-1 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
+      {{range $i, $ph := $photos}}{{if lt $i 6}}
+        <li class="w-72 shrink-0 snap-start sm:w-auto {{if eq $i 0}}sm:col-span-2 sm:row-span-2{{end}}">
+          <img src="/media/{{$ph.Path}}" alt="{{$ph.Alt $v.Name}}" width="{{$ph.Width}}" height="{{$ph.Height}}" loading="lazy"
+               class="aspect-[4/3] w-full rounded-xl object-cover {{if eq $i 0}}sm:h-full{{end}}">
+        </li>
+      {{end}}{{end}}
+    </ul>
+  </section>
+{{end}}
+
+<div class="grid gap-8 lg:grid-cols-3">
+  <div class="lg:col-span-2">
+    {{with $v.Description}}
+      <h2 class="text-xl font-bold">{{t "village.about"}}</h2>
+      <p class="mt-3 whitespace-pre-line text-lg leading-relaxed text-stone-800">{{.}}</p>
+    {{end}}
+
+    <h2 class="mb-4 mt-10 text-2xl font-extrabold">{{t "village.packages"}}</h2>
+    <ul class="grid gap-5 sm:grid-cols-2">
+      {{range .Data.Packages}}
+        <li><a href="/desa/{{$v.Slug}}/paket/{{.ID}}" class="{{template "card_link_class"}}">{{template "package_card_body" .}}</a></li>
+      {{else}}
+        <li class="card text-stone-700 sm:col-span-2">{{t "village.no_packages"}}</li>
+      {{end}}
+    </ul>
+  </div>
+
+  <aside class="space-y-4">
+    <div class="card space-y-3">
+      <h2 class="text-lg font-bold">{{t "village.contact"}}</h2>
+      {{with $v.Address}}<p class="flex items-start gap-2 text-stone-800"><span class="icon mt-0.5 size-5 text-clay-700">{{template "i-map-pin"}}</span>{{.}}</p>{{end}}
+      <p class="flex items-center gap-2"><span class="icon size-5 text-brand-700">{{template "i-phone"}}</span><a href="tel:{{$v.ContactPhone}}" class="btn-link">{{$v.ContactPhone}}</a></p>
+      {{with $v.ContactWhatsApp}}<p class="flex items-center gap-2"><span class="icon size-5 text-brand-700">{{template "i-message-circle"}}</span>WhatsApp {{.}}</p>{{end}}
+    </div>
+    {{if not .Data.Preview}}
+      <div class="flex items-start gap-3 rounded-2xl bg-brand-50 p-4 text-sm text-brand-900">
+        <span class="icon mt-0.5 size-5">{{template "i-shield-check"}}</span>
+        <span>{{t "village.verified_note"}}</span>
+      </div>
+    {{end}}
+  </aside>
+</div>
 
 {{if and .Viewer (not .Data.Preview)}}
   <details class="mt-10 text-sm text-stone-700">
-    <summary class="cursor-pointer">{{t "report.summary"}}</summary>
+    <summary class="inline-flex min-h-11 cursor-pointer items-center gap-2 font-semibold"><span class="icon size-4">{{template "i-flag"}}</span>{{t "report.summary"}}</summary>
     <form method="post" action="/lapor" class="mt-3 max-w-xl space-y-3">
       <input type="hidden" name="csrf_token" value="{{.CSRF}}">
       <input type="hidden" name="target_type" value="village">
-      <input type="hidden" name="target_id" value="{{.Data.Village.ID}}">
+      <input type="hidden" name="target_id" value="{{$v.ID}}">
       <input type="hidden" name="back" value="{{.Path}}">
       <label for="reason" class="field-label">{{t "report.reason"}}</label>
       <textarea id="reason" name="reason" rows="3" maxlength="1000" required class="field-input py-2"></textarea>
-      <button type="submit" class="btn-link text-red-800">{{t "report.submit"}}</button>
+      <button type="submit" class="btn-secondary">{{t "report.submit"}}</button>
     </form>
   </details>
 {{end}}

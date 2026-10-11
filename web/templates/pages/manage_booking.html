@@ -3,7 +3,7 @@
 {{$d := .Data}}{{$b := $d.Row}}{{$csrf := .CSRF}}
 {{$base := printf "/kelola/desa/%d/pemesanan/%d" $b.VillageID $b.ID}}
 <div class="mx-auto max-w-2xl space-y-6">
-  <nav class="flex flex-wrap gap-2 text-sm">
+  <nav class="flex flex-wrap items-center gap-x-2 text-sm">
     <a href="/kelola/desa/{{$b.VillageID}}" class="btn-link">{{$b.Package.VillageName}}</a><span aria-hidden="true">›</span>
     <a href="/kelola/desa/{{$b.VillageID}}/pemesanan" class="btn-link">{{t "manage.bookings.title"}}</a>
   </nav>

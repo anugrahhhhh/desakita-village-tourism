@@ -1,6 +1,6 @@
 {{define "title"}}{{t "manage.bookings.title"}} · {{.Data.Village.Name}}{{end}}
 {{define "content"}}
-<nav class="mb-6 flex flex-wrap gap-2 text-sm">
+<nav class="mb-6 flex flex-wrap items-center gap-x-2 text-sm">
   <a href="/kelola" class="btn-link">{{t "manage.nav.all_villages"}}</a><span aria-hidden="true">›</span>
   <a href="/kelola/desa/{{.Data.Village.ID}}" class="btn-link">{{.Data.Village.Name}}</a>
 </nav>
@@ -10,6 +10,23 @@
 
 {{define "bookings_lists"}}{{/* . is the root View; .Data is booking.dashboardData */}}
 {{$d := .Data}}{{$base := printf "/kelola/desa/%d/pemesanan" $d.Village.ID}}
+<ul class="mb-6 grid grid-cols-3 gap-2 sm:gap-4">
+  <li class="rounded-2xl bg-amber-100 p-3 text-amber-900 sm:p-4">
+    <span class="icon size-5">{{template "i-hourglass"}}</span>
+    <p class="mt-1 text-2xl font-extrabold sm:text-3xl">{{len $d.Pending}}</p>
+    <p class="text-xs font-semibold sm:text-sm">{{t "manage.bookings.pending"}}</p>
+  </li>
+  <li class="rounded-2xl bg-brand-50 p-3 text-brand-900 sm:p-4">
+    <span class="icon size-5">{{template "i-calendar-days"}}</span>
+    <p class="mt-1 text-2xl font-extrabold sm:text-3xl">{{len $d.Upcoming}}</p>
+    <p class="text-xs font-semibold sm:text-sm">{{t "manage.bookings.upcoming"}}</p>
+  </li>
+  <li class="rounded-2xl bg-sky-100 p-3 text-sky-900 sm:p-4">
+    <span class="icon size-5">{{template "i-flag"}}</span>
+    <p class="mt-1 text-2xl font-extrabold sm:text-3xl">{{len $d.ToComplete}}</p>
+    <p class="text-xs font-semibold sm:text-sm">{{t "manage.bookings.to_complete"}}</p>
+  </li>
+</ul>
 <div class="space-y-8">
   <section>
     <h2 class="mb-3 text-lg font-bold">{{t "manage.bookings.pending"}} <span class="text-stone-500">({{len $d.Pending}})</span></h2>

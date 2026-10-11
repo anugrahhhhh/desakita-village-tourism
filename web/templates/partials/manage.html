@@ -3,10 +3,10 @@
 {{define "duration"}}{{if .DurationNights}}{{t "package.duration" .DurationDays .DurationNights}}{{else}}{{t "package.duration_days" .DurationDays}}{{end}}{{end}}
 
 {{define "status_badge"}}
-  {{- if eq . "verified"}}<span class="rounded-full bg-brand-100 px-3 py-1 text-sm font-semibold text-brand-900">{{t "village.status.verified"}}</span>
-  {{- else if eq . "pending"}}<span class="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900">{{t "village.status.pending"}}</span>
-  {{- else if eq . "rejected"}}<span class="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-900">{{t "village.status.rejected"}}</span>
-  {{- else}}<span class="rounded-full bg-stone-200 px-3 py-1 text-sm font-semibold text-stone-800">{{t "village.status.suspended"}}</span>{{end}}
+  {{- if eq . "verified"}}<span class="badge bg-brand-100 text-brand-900"><span class="icon size-4">{{template "i-shield-check"}}</span>{{t "village.status.verified"}}</span>
+  {{- else if eq . "pending"}}<span class="badge bg-amber-100 text-amber-900"><span class="icon size-4">{{template "i-hourglass"}}</span>{{t "village.status.pending"}}</span>
+  {{- else if eq . "rejected"}}<span class="badge bg-red-100 text-red-900"><span class="icon size-4">{{template "i-x"}}</span>{{t "village.status.rejected"}}</span>
+  {{- else}}<span class="badge bg-stone-200 text-stone-800"><span class="icon size-4">{{template "i-triangle-alert"}}</span>{{t "village.status.suspended"}}</span>{{end}}
 {{- end}}
 
 {{define "status_banner"}}{{/* . is a village.Village */}}
@@ -23,7 +23,7 @@
 {{end}}
 
 {{define "manage_nav"}}{{/* . is a village.Village */}}
-  <nav class="mb-6 flex flex-wrap gap-2 text-sm" aria-label="{{t "manage.nav.label"}}">
+  <nav class="mb-6 flex flex-wrap items-center gap-x-2 text-sm" aria-label="{{t "manage.nav.label"}}">
     <a href="/kelola" class="btn-link">{{t "manage.nav.all_villages"}}</a>
     <span aria-hidden="true">›</span>
     <a href="/kelola/desa/{{.ID}}" class="btn-link">{{.Name}}</a>
