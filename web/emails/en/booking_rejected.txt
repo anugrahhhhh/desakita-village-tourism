@@ -1,0 +1,15 @@
+{{define "subject"}}Request not accepted: {{.PackageName}}{{end}}
+{{define "body"}}
+Hello {{.TravelerName}},
+
+We're sorry: the managers of {{.VillageName}} can't accept your request for {{.Date}}.
+{{if .Note}}
+Message from the managers: {{.Note}}
+{{end}}
+You can choose another date or another package on DesaKita.
+
+View booking: {{.Link}}
+--
+DesaKita sent this email automatically because your booking changed.
+Payment is never requested by email; pay the village managers directly.
+{{end}}

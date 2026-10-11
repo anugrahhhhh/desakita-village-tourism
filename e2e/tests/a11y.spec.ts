@@ -42,7 +42,7 @@ for (const vp of viewports) {
       await page.waitForLoadState("networkidle"); // HTMX bookings panel
       await expectNoA11yViolations(page, `ringkasan desa @${vp.name}`);
       const overview = page.url();
-      for (const sub of ["/pemesanan", "/paket", "/profil", "/foto"]) {
+      for (const sub of ["/pemesanan", "/paket", "/profil", "/foto", "/statistik"]) {
         await page.goto(overview + sub);
         await expectNoA11yViolations(page, `${sub} @${vp.name}`);
       }

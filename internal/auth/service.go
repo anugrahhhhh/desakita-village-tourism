@@ -16,6 +16,7 @@ import (
 	"desakita/internal/db"
 	"desakita/internal/platform/audit"
 	"desakita/internal/platform/form"
+	"desakita/internal/platform/i18n"
 	outbox "desakita/internal/platform/mail"
 	"desakita/internal/platform/phone"
 )
@@ -32,10 +33,11 @@ type User struct {
 	Name    string
 	Phone   string
 	IsAdmin bool
+	Locale  string
 }
 
 func fromRow(u db.User) User {
-	out := User{ID: u.ID, Email: u.Email, Name: u.Name, IsAdmin: u.IsAdmin}
+	out := User{ID: u.ID, Email: u.Email, Name: u.Name, IsAdmin: u.IsAdmin, Locale: u.Locale}
 	if u.Phone != nil {
 		out.Phone = *u.Phone
 	}
@@ -60,6 +62,9 @@ func NewService(pool *pgxpool.Pool) (*Service, error) {
 
 type RegisterInput struct {
 	Name, Email, Password, Phone string
+	// Locale is the interface language at sign-up; emails use it. Unsupported values fall
+	// back to the default language.
+	Locale string
 }
 
 func (in *RegisterInput) normalize() {
@@ -109,7 +114,11 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (User, error) 
 	if in.Phone != "" {
 		phone = &in.Phone
 	}
-	row, err := s.q.CreateUser(ctx, db.CreateUserParams{Email: in.Email, PasswordHash: hash, Name: in.Name, Phone: phone})
+	locale := in.Locale
+	if !i18n.IsSupported(locale) {
+		locale = i18n.Default
+	}
+	row, err := s.q.CreateUser(ctx, db.CreateUserParams{Email: in.Email, PasswordHash: hash, Name: in.Name, Phone: phone, Locale: locale})
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "users_email_key" {
@@ -149,6 +158,17 @@ func (s *Service) UserByID(ctx context.Context, id int64) (User, error) {
 		return User{}, fmt.Errorf("get user: %w", err)
 	}
 	return fromRow(row), nil
+}
+
+// SetLocale stores the account's interface language.
+func (s *Service) SetLocale(ctx context.Context, userID int64, locale string) error {
+	if !i18n.IsSupported(locale) {
+		return fmt.Errorf("set locale: unsupported %q", locale)
+	}
+	if err := s.q.SetUserLocale(ctx, db.SetUserLocaleParams{ID: userID, Locale: locale}); err != nil {
+		return fmt.Errorf("set locale: %w", err)
+	}
+	return nil
 }
 
 // PromoteAdmin grants admin rights to the account with email (CLI only). The change is

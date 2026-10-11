@@ -53,12 +53,12 @@ type Handler struct {
 	catalog Catalog
 	sm      *scs.SessionManager
 	rd      *render.Renderer
-	tr      *i18n.Translator
+	tr      *i18n.Bundle
 	// CreateLimit wraps booking submission (rate limiting); set by internal/app.
 	CreateLimit httpx.Middleware
 }
 
-func NewHandler(svc *Service, catalog Catalog, sm *scs.SessionManager, rd *render.Renderer, tr *i18n.Translator) *Handler {
+func NewHandler(svc *Service, catalog Catalog, sm *scs.SessionManager, rd *render.Renderer, tr *i18n.Bundle) *Handler {
 	return &Handler{svc: svc, catalog: catalog, sm: sm, rd: rd, tr: tr, CreateLimit: httpx.Pass}
 }
 
@@ -77,6 +77,7 @@ func (h *Handler) TravelerRoutes(r chi.Router) {
 // ManageRoutes mounts /kelola/desa/{villageID}/... booking pages. The caller applies login
 // and village-manager middleware; every service call re-checks ownership anyway.
 func (h *Handler) ManageRoutes(r chi.Router) {
+	r.Get("/statistik", h.stats)
 	r.Get("/pemesanan", h.manageList)
 	r.Get("/pemesanan/panel", h.managePanel)
 	r.Get("/pemesanan/{bookingID}", h.manageDetail)
@@ -279,7 +280,7 @@ func (h *Handler) myBooking(w http.ResponseWriter, r *http.Request) {
 	h.rd.Page(w, r, http.StatusOK, "my_booking", detailData{
 		Row:     row,
 		Actions: Actions{Cancel: h.svc.ActionsFor(b).Cancel},
-		WALink:  phone.WALink(contact, h.waMessage("booking.wa.traveler", row)),
+		WALink:  phone.WALink(contact, h.waMessage(r, "booking.wa.traveler", row)),
 		Loc:     h.svc.cfg.Location,
 	})
 }
@@ -306,9 +307,11 @@ func (h *Handler) travelerCancel(w http.ResponseWriter, r *http.Request) {
 
 // waMessage builds a WhatsApp message. Every message key uses indexed verbs over:
 // 1 traveler name, 2 village, 3 package, 4 date, 5 party size, 6 total, 7 booking id.
-func (h *Handler) waMessage(key string, row Row) string {
-	return h.tr.T(key, row.ContactName, row.Package.VillageName, row.Package.Name,
-		render.FormatDate(h.tr, row.StartDate), row.PartySize, render.FormatRupiah(row.TotalPriceIDR), row.ID)
+// It is written in the sender's interface language.
+func (h *Handler) waMessage(r *http.Request, key string, row Row) string {
+	tr := h.tr.From(r.Context())
+	return tr.T(key, row.ContactName, row.Package.VillageName, row.Package.Name,
+		render.FormatDate(tr, row.StartDate), row.PartySize, render.FormatRupiah(row.TotalPriceIDR), row.ID)
 }
 
 // waStatusKeys picks the manager-to-traveler WhatsApp message for each status.
@@ -441,7 +444,7 @@ func (h *Handler) manageDetail(w http.ResponseWriter, r *http.Request) {
 	row := rows[0]
 	var link string
 	if b.TravelerID != nil { // deleted accounts have no contact details left
-		link = phone.WALink(b.ContactPhone, h.waMessage(waStatusKeys[b.Status], row))
+		link = phone.WALink(b.ContactPhone, h.waMessage(r, waStatusKeys[b.Status], row))
 	}
 	h.rd.Page(w, r, http.StatusOK, "manage_booking", detailData{
 		Row: row, Actions: h.svc.ActionsFor(b), WALink: link, Loc: h.svc.cfg.Location,

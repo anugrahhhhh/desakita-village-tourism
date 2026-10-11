@@ -1,0 +1,19 @@
+{{define "subject"}}Booking cancelled by the traveler: {{.PackageName}}, {{.Date}}{{end}}
+{{define "body"}}
+Hello {{.RecipientName}},
+
+{{.TravelerName}} has cancelled the booking below. Its quota is back in the calendar.
+
+Package   : {{.PackageName}}
+Village   : {{.VillageName}}
+Date      : {{.Date}}
+People    : {{.PartySize}} {{if eq .PartySize 1}}person{{else}}people{{end}}
+Estimate  : {{.Total}}
+{{if .Note}}
+Reason: {{.Note}}
+{{end}}
+View booking: {{.Link}}
+--
+DesaKita sent this email automatically because a booking at your village changed.
+Payment is never requested by email; pay the village managers directly.
+{{end}}

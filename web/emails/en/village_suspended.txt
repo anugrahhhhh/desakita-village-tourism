@@ -1,0 +1,13 @@
+{{define "subject"}}{{.VillageName}} is temporarily suspended{{end}}
+{{define "body"}}
+Hello {{.RecipientName}},
+
+The DesaKita admin has temporarily suspended {{.VillageName}}. Travelers can't see the village and it gets no new bookings. Existing bookings are not cancelled automatically.
+{{if .Note}}
+Reason: {{.Note}}
+{{end}}
+The admin will contact you. Dashboard: {{.Link}}
+--
+DesaKita sent this email automatically because a village you manage changed.
+Payment is never requested by email; pay the village managers directly.
+{{end}}

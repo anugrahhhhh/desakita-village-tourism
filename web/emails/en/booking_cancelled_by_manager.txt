@@ -1,0 +1,21 @@
+{{define "subject"}}Booking cancelled by the village: {{.PackageName}}, {{.Date}}{{end}}
+{{define "body"}}
+Hello {{.TravelerName}},
+
+The managers of {{.VillageName}} have cancelled your booking.
+
+Package   : {{.PackageName}}
+Village   : {{.VillageName}}
+Date      : {{.Date}}
+People    : {{.PartySize}} {{if eq .PartySize 1}}person{{else}}people{{end}}
+Estimate  : {{.Total}}
+{{if .Note}}
+Message from the managers: {{.Note}}
+{{end}}
+If you have paid a deposit, contact the village managers about a refund.
+
+View booking: {{.Link}}
+--
+DesaKita sent this email automatically because your booking changed.
+Payment is never requested by email; pay the village managers directly.
+{{end}}

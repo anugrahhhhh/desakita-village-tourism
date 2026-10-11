@@ -1,0 +1,11 @@
+{{define "subject"}}{{.VillageName}} is active again{{end}}
+{{define "body"}}
+Hello {{.RecipientName}},
+
+{{.VillageName}} has been reinstated and travelers can see it again.
+
+Dashboard: {{.Link}}
+--
+DesaKita sent this email automatically because a village you manage changed.
+Payment is never requested by email; pay the village managers directly.
+{{end}}

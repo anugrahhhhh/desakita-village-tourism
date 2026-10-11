@@ -10,6 +10,7 @@ import (
 	"desakita/internal/platform/csrf"
 	"desakita/internal/platform/form"
 	"desakita/internal/platform/httpx"
+	"desakita/internal/platform/i18n"
 	"desakita/internal/platform/render"
 	"desakita/internal/platform/session"
 )
@@ -33,6 +34,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/masuk", h.loginForm)
 	r.With(h.LoginLimit).Post("/masuk", h.login)
 	r.Post("/keluar", h.logout)
+	r.Post("/bahasa", h.setLanguage)
 	r.Group(func(r chi.Router) {
 		r.Use(httpx.RequireLogin)
 		r.Get("/akun", h.account)
@@ -58,7 +60,7 @@ func (h *Handler) LoadViewer(next http.Handler) http.Handler {
 			h.rd.ServerError(w, r, err)
 			return
 		default:
-			ctx = httpx.WithViewer(ctx, httpx.Viewer{ID: u.ID, Name: u.Name, Email: u.Email, Phone: u.Phone, IsAdmin: u.IsAdmin})
+			ctx = httpx.WithViewer(ctx, httpx.Viewer{ID: u.ID, Name: u.Name, Email: u.Email, Phone: u.Phone, IsAdmin: u.IsAdmin, Locale: u.Locale})
 		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -92,6 +94,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		Email:    r.PostFormValue("email"),
 		Password: r.PostFormValue("password"),
 		Phone:    r.PostFormValue("phone"),
+		Locale:   i18n.LangFrom(r.Context()),
 	}
 	u, err := h.svc.Register(r.Context(), in)
 	var verr *form.ValidationError
@@ -203,4 +206,25 @@ func nextParam(r *http.Request) string {
 		return httpx.SafeRedirect(v)
 	}
 	return ""
+}
+
+// setLanguage stores the visitor's language choice in a cookie and, when logged in, on the
+// account so emails follow it too (SPEC §15). It returns to the page the form was on.
+func (h *Handler) setLanguage(w http.ResponseWriter, r *http.Request) {
+	lang := r.PostFormValue("lang")
+	if !i18n.IsSupported(lang) {
+		http.Error(w, "unsupported language", http.StatusBadRequest)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name: i18n.CookieName, Value: lang, Path: "/", MaxAge: 365 * 24 * 60 * 60,
+		Secure: h.sm.Cookie.Secure, SameSite: http.SameSiteLaxMode, HttpOnly: true,
+	})
+	if v, ok := httpx.ViewerFrom(r.Context()); ok && v.Locale != lang {
+		if err := h.svc.SetLocale(r.Context(), v.ID, lang); err != nil {
+			h.rd.ServerError(w, r, err)
+			return
+		}
+	}
+	httpx.Redirect(w, r, httpx.SafeRedirect(r.PostFormValue("back")))
 }

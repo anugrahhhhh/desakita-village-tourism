@@ -1,0 +1,19 @@
+{{define "subject"}}Your request was sent: {{.PackageName}}{{end}}
+{{define "body"}}
+Hello {{.TravelerName}},
+
+We have passed your booking request on to the managers of {{.VillageName}}.
+
+Package   : {{.PackageName}}
+Village   : {{.VillageName}}
+Date      : {{.Date}}
+People    : {{.PartySize}} {{if eq .PartySize 1}}person{{else}}people{{end}}
+Estimate  : {{.Total}}
+
+The managers will respond by {{.RespondBy}} at the latest. We'll let you know by email.
+
+View booking status: {{.Link}}
+--
+DesaKita sent this email automatically because your booking changed.
+Payment is never requested by email; pay the village managers directly.
+{{end}}

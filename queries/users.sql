@@ -1,6 +1,6 @@
 -- name: CreateUser :one
-INSERT INTO users (email, password_hash, name, phone)
-VALUES ($1, $2, $3, $4)
+INSERT INTO users (email, password_hash, name, phone, locale)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetUserByEmail :one
@@ -37,3 +37,6 @@ DELETE FROM users WHERE id = $1;
 
 -- name: PromoteAdmin :one
 UPDATE users SET is_admin = true, updated_at = now() WHERE email = $1 RETURNING id;
+
+-- name: SetUserLocale :exec
+UPDATE users SET locale = $2, updated_at = now() WHERE id = $1;

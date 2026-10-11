@@ -1,0 +1,12 @@
+{{define "subject"}}Thank you for visiting {{.VillageName}}{{end}}
+{{define "body"}}
+Hello {{.TravelerName}},
+
+Thank you for joining {{.PackageName}} at {{.VillageName}} on {{.Date}}.
+
+How was your experience? Your review helps other travelers and the village:
+{{.Link}}
+--
+DesaKita sent this email automatically because your booking changed.
+Payment is never requested by email; pay the village managers directly.
+{{end}}

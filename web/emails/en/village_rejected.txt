@@ -1,0 +1,13 @@
+{{define "subject"}}The registration of {{.VillageName}} was not accepted{{end}}
+{{define "body"}}
+Hello {{.RecipientName}},
+
+The registration of {{.VillageName}} was not accepted.
+
+Reason: {{.Note}}
+
+Correct the village details, then contact the admin for another review: {{.Link}}
+--
+DesaKita sent this email automatically because a village you manage changed.
+Payment is never requested by email; pay the village managers directly.
+{{end}}

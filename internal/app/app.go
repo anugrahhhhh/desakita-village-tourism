@@ -90,7 +90,7 @@ func mailTransport(cfg config.Config, logger *slog.Logger) mail.Transport {
 }
 
 func New(opts Options) (*App, error) {
-	tr, err := i18n.Load(web.FS, "id")
+	tr, err := i18n.LoadBundle(web.FS)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func New(opts Options) (*App, error) {
 	packageSvc := tourpackage.NewService(opts.Pool, villageSvc, store, opts.Logger)
 	villageH := village.NewHandler(villageSvc, packageSvc, sm, rd)
 	packageH := tourpackage.NewHandler(packageSvc, sm, rd)
-	templates, err := mail.LoadTemplates(web.FS, tr.Lang())
+	templates, err := loadMailTemplates()
 	if err != nil {
 		return nil, err
 	}
@@ -177,6 +177,7 @@ func New(opts Options) (*App, error) {
 			rd.ServerError(w, r, errors.New("panic recovered"))
 		}),
 		httpx.SecurityHeaders(opts.Config.IsProduction()),
+		detectLang,
 	)
 	r.NotFound(rd.NotFound)
 
@@ -215,6 +216,7 @@ func New(opts Options) (*App, error) {
 		r.Use(httpx.BodyLimit(formBodyLimit, multipartBodyLimit))
 		r.Use(csrf.Protect(sm, http.HandlerFunc(rd.Forbidden), http.HandlerFunc(rd.TooLarge)))
 		r.Use(authH.LoadViewer)
+		r.Use(detectLang)
 
 		authH.Routes(r)
 		villageH.PublicRoutes(r)

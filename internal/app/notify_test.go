@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"desakita/internal/platform/i18n"
 	"desakita/internal/platform/mail"
 	"desakita/web"
 )
@@ -175,13 +176,20 @@ func TestDeletedAccountGetsNoQueuedMail(t *testing.T) {
 // Every template renders with complete data, so a field-name typo fails here rather than
 // in the worker.
 func TestEmailTemplatesRender(t *testing.T) {
-	tm, err := mail.LoadTemplates(web.FS, "id")
-	if err != nil {
-		t.Fatal(err)
+	for _, lang := range i18n.Supported {
+		tm, err := mail.LoadTemplates(web.FS, lang)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n := len(tm.Names()); n != 12 {
+			t.Errorf("%s: loaded %d templates, want 12", lang, n)
+		}
+		renderAll(t, tm)
 	}
-	if n := len(tm.Names()); n != 12 {
-		t.Errorf("loaded %d templates, want 12", n)
-	}
+}
+
+func renderAll(t *testing.T, tm *mail.Templates) {
+	t.Helper()
 	type full struct {
 		RecipientName, TravelerName, PackageName, VillageName, Date, Total, Note, RespondBy, Link, PublicLink string
 		PartySize                                                                                             int32

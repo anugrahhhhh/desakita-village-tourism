@@ -1,0 +1,13 @@
+{{define "subject"}}Request expired: {{.PackageName}}{{end}}
+{{define "body"}}
+Hello {{.TravelerName}},
+
+The managers of {{.VillageName}} didn't respond to your request for {{.Date}} in time, so it expired automatically.
+
+You can send a new request or contact the village directly.
+
+View booking: {{.Link}}
+--
+DesaKita sent this email automatically because your booking changed.
+Payment is never requested by email; pay the village managers directly.
+{{end}}

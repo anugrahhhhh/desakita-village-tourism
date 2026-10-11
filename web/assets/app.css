@@ -135,3 +135,11 @@
     fill: currentColor;
   }
 }
+
+/* Manager statistics chart (SPEC §16): one series in the brand hue, recessive grid. */
+.stats-grid { stroke: var(--color-stone-200); stroke-width: 1; }
+.stats-axis { fill: var(--color-stone-700); font-size: 14px; }
+.stats-value { fill: var(--color-stone-900); font-size: 14px; font-weight: 700; }
+.stats-mark { fill: var(--color-brand-600); }
+.stats-hit { fill: transparent; }
+.stats-bar:hover .stats-mark { fill: var(--color-brand-800); }

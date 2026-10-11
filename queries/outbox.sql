@@ -48,12 +48,12 @@ SELECT status, count(*) AS total FROM email_outbox GROUP BY status;
 -- Recipient lookups used by the notification adapters (inside the business transaction).
 
 -- name: VillageManagerEmails :many
-SELECT u.email, u.name FROM village_members m JOIN users u ON u.id = m.user_id
+SELECT u.email, u.name, u.locale FROM village_members m JOIN users u ON u.id = m.user_id
 WHERE m.village_id = $1 ORDER BY u.id;
 
 -- name: BookingNotificationData :one
 SELECT b.id, b.village_id, b.start_date, b.party_size, b.total_price_idr, b.contact_name,
-       b.decision_note, b.expires_at, coalesce(u.email, '')::text AS traveler_email,
+       b.decision_note, b.expires_at, coalesce(u.email, '')::text AS traveler_email, coalesce(u.locale, 'id')::text AS traveler_locale,
        p.name AS package_name, v.name AS village_name
 FROM bookings b
 JOIN tour_packages p ON p.id = b.package_id

@@ -1,0 +1,20 @@
+{{define "subject"}}New booking request: {{.PackageName}}, {{.Date}}{{end}}
+{{define "body"}}
+Hello {{.RecipientName}},
+
+There is a new booking request for {{.VillageName}}.
+
+Traveler  : {{.TravelerName}}
+Package   : {{.PackageName}}
+Village   : {{.VillageName}}
+Date      : {{.Date}}
+People    : {{.PartySize}} {{if eq .PartySize 1}}person{{else}}people{{end}}
+Estimate  : {{.Total}}
+
+Respond before {{.RespondBy}}. Without a response the request expires automatically and the quota is released.
+
+Open the request: {{.Link}}
+--
+DesaKita sent this email automatically because a booking at your village changed.
+Payment is never requested by email; pay the village managers directly.
+{{end}}

@@ -63,6 +63,16 @@
           <li>{{t "footer.sdg12"}}</li>
         </ul>
       </div>
+      {{if .CSRF}}{{/* Error pages have no CSRF token, so no switcher there. */}}
+        <form method="post" action="/bahasa" class="flex flex-wrap items-center gap-2 sm:col-span-2">
+          <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+          <input type="hidden" name="back" value="{{.URI}}">
+          <span class="font-semibold text-stone-900">{{t "lang.switch_label"}}</span>
+          {{if eq .Lang "id"}}<span class="font-semibold text-brand-800" aria-current="true">{{t "lang.name.id"}}</span>{{else}}<button type="submit" name="lang" value="id" lang="id" class="btn-link min-h-11">{{t "lang.name.id"}}</button>{{end}}
+          <span aria-hidden="true">·</span>
+          {{if eq .Lang "en"}}<span class="font-semibold text-brand-800" aria-current="true">{{t "lang.name.en"}}</span>{{else}}<button type="submit" name="lang" value="en" lang="en" class="btn-link min-h-11">{{t "lang.name.en"}}</button>{{end}}
+        </form>
+      {{end}}
     </div>
   </footer>
 </body>

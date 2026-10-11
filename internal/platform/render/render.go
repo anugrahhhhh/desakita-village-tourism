@@ -25,7 +25,11 @@ import (
 
 // View is the root value every template receives.
 type View struct {
-	Lang   string
+	Lang string
+	// Langs lists the supported languages for the language switcher.
+	Langs []string
+	// URI is the current path and query, the switcher's return address.
+	URI    string
 	Viewer *httpx.Viewer
 	CSRF   string
 	Flash  string
@@ -48,17 +52,31 @@ type MapConfig struct {
 type Renderer struct {
 	zone   *zone
 	mapCfg *MapConfig
-	pages  map[string]*template.Template
-	tr     *i18n.Translator
+	// pages[lang][name]: each page is parsed once per language, so "t" is bound at parse
+	// time and rendering stays as fast as with one language.
+	pages  map[string]map[string]*template.Template
+	bundle *i18n.Bundle
 	sm     *scs.SessionManager
 	logger *slog.Logger
 }
 
 // New parses templates/layout.html + templates/partials/*.html with each templates/pages/*.html.
 // A page named "pages/login.html" is rendered as "login".
-func New(fsys fs.FS, tr *i18n.Translator, sm *scs.SessionManager, logger *slog.Logger) (*Renderer, error) {
+func New(fsys fs.FS, bundle *i18n.Bundle, sm *scs.SessionManager, logger *slog.Logger) (*Renderer, error) {
 	z := &zone{loc: time.UTC}
 	mc := &MapConfig{}
+	pages := map[string]map[string]*template.Template{}
+	for _, lang := range i18n.Supported {
+		p, err := parsePages(fsys, bundle.For(lang), z, mc)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", lang, err)
+		}
+		pages[lang] = p
+	}
+	return &Renderer{zone: z, mapCfg: mc, pages: pages, bundle: bundle, sm: sm, logger: logger}, nil
+}
+
+func parsePages(fsys fs.FS, tr *i18n.Translator, z *zone, mc *MapConfig) (map[string]*template.Template, error) {
 	funcs := template.FuncMap{
 		"mapConfig": func() MapConfig { return *mc },
 		// coord formats a coordinate for a data attribute or input ("" when unset).
@@ -86,8 +104,10 @@ func New(fsys fs.FS, tr *i18n.Translator, sm *scs.SessionManager, logger *slog.L
 			}
 			return out
 		},
-		// decimal1 formats 4.567 as "4,6" (Indonesian decimal comma).
-		"decimal1": func(v float64) string { return strings.Replace(fmt.Sprintf("%.1f", v), ".", ",", 1) },
+		// decimal1 formats 4.567 as "4,6" or "4.6" (the language's decimal separator).
+		"decimal1": func(v float64) string {
+			return strings.Replace(fmt.Sprintf("%.1f", v), ".", tr.T("format.decimal_separator"), 1)
+		},
 		// local converts a timestamp to the app's time zone (see SetLocation).
 		"local": func(t time.Time) time.Time { return t.In(z.loc) },
 		// rupiah formats an integer amount as "Rp 150.000".
@@ -117,7 +137,22 @@ func New(fsys fs.FS, tr *i18n.Translator, sm *scs.SessionManager, logger *slog.L
 		}
 		pages[strings.TrimSuffix(path.Base(pf), ".html")] = tmpl
 	}
-	return &Renderer{zone: z, mapCfg: mc, pages: pages, tr: tr, sm: sm, logger: logger}, nil
+	return pages, nil
+}
+
+// page returns the template set for name in the request language.
+func (rd *Renderer) page(r *http.Request, name string) (*template.Template, bool) {
+	t, ok := rd.pages[i18n.LangFrom(r.Context())][name]
+	return t, ok
+}
+
+// view builds the root template value for r.
+func (rd *Renderer) view(r *http.Request, data any) View {
+	v := View{Lang: i18n.LangFrom(r.Context()), Langs: i18n.Supported, URI: r.URL.RequestURI(), Path: r.URL.Path, Data: data}
+	if viewer, ok := httpx.ViewerFrom(r.Context()); ok {
+		v.Viewer = &viewer
+	}
+	return v
 }
 
 // SetLocation sets the time zone used by the "local" template func. Call before serving.
@@ -132,22 +167,15 @@ func (rd *Renderer) SetMap(c MapConfig) { *rd.mapCfg = c }
 
 // Page renders page with status. data becomes View.Data.
 func (rd *Renderer) Page(w http.ResponseWriter, r *http.Request, status int, page string, data any) {
-	tmpl, ok := rd.pages[page]
+	tmpl, ok := rd.page(r, page)
 	if !ok {
 		rd.ServerError(w, r, fmt.Errorf("render: unknown page %q", page))
 		return
 	}
 	ctx := r.Context()
-	v := View{
-		Lang:  rd.tr.Lang(),
-		CSRF:  csrf.Token(ctx, rd.sm),
-		Flash: rd.sm.PopString(ctx, session.KeyFlash),
-		Path:  r.URL.Path,
-		Data:  data,
-	}
-	if viewer, ok := httpx.ViewerFrom(ctx); ok {
-		v.Viewer = &viewer
-	}
+	v := rd.view(r, data)
+	v.CSRF = csrf.Token(ctx, rd.sm)
+	v.Flash = rd.sm.PopString(ctx, session.KeyFlash)
 	// Render to a buffer so a template error never sends a half-written 200.
 	var buf bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buf, "base", v); err != nil {
@@ -155,6 +183,7 @@ func (rd *Renderer) Page(w http.ResponseWriter, r *http.Request, status int, pag
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Language", v.Lang)
 	w.WriteHeader(status)
 	buf.WriteTo(w) //nolint:errcheck
 }
@@ -162,22 +191,20 @@ func (rd *Renderer) Page(w http.ResponseWriter, r *http.Request, status int, pag
 // Partial renders a single named template (defined in page's template set) without the
 // layout, for HTMX fragment responses.
 func (rd *Renderer) Partial(w http.ResponseWriter, r *http.Request, status int, page, name string, data any) {
-	tmpl, ok := rd.pages[page]
+	tmpl, ok := rd.page(r, page)
 	if !ok {
 		rd.ServerError(w, r, fmt.Errorf("render: unknown page %q", page))
 		return
 	}
-	ctx := r.Context()
-	v := View{Lang: rd.tr.Lang(), CSRF: csrf.Token(ctx, rd.sm), Path: r.URL.Path, Data: data}
-	if viewer, ok := httpx.ViewerFrom(ctx); ok {
-		v.Viewer = &viewer
-	}
+	v := rd.view(r, data)
+	v.CSRF = csrf.Token(r.Context(), rd.sm)
 	var buf bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buf, name, v); err != nil {
 		rd.ServerError(w, r, fmt.Errorf("render %s/%s: %w", page, name, err))
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Language", v.Lang)
 	w.WriteHeader(status)
 	buf.WriteTo(w) //nolint:errcheck
 }
@@ -200,15 +227,12 @@ type ErrorData struct {
 }
 
 func (rd *Renderer) errorPage(w http.ResponseWriter, r *http.Request, status int, data ErrorData) {
-	tmpl, ok := rd.pages["error"]
+	tmpl, ok := rd.page(r, "error")
 	if !ok {
 		http.Error(w, http.StatusText(status), status)
 		return
 	}
-	v := View{Lang: rd.tr.Lang(), Path: r.URL.Path, Data: data}
-	if viewer, ok := httpx.ViewerFrom(r.Context()); ok {
-		v.Viewer = &viewer
-	}
+	v := rd.view(r, data)
 	var buf bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buf, "base", v); err != nil {
 		rd.logger.Error("render error page", "err", err)
@@ -216,6 +240,7 @@ func (rd *Renderer) errorPage(w http.ResponseWriter, r *http.Request, status int
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Language", v.Lang)
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
 	buf.WriteTo(w) //nolint:errcheck

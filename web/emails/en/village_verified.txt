@@ -1,0 +1,12 @@
+{{define "subject"}}{{.VillageName}} is verified{{end}}
+{{define "body"}}
+Hello {{.RecipientName}},
+
+The DesaKita admin has verified {{.VillageName}}, and travelers can now see it.
+
+Make sure your packages and calendar are filled in: {{.Link}}
+Public village page: {{.PublicLink}}
+--
+DesaKita sent this email automatically because a village you manage changed.
+Payment is never requested by email; pay the village managers directly.
+{{end}}

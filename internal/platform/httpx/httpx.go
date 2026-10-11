@@ -17,6 +17,8 @@ type Viewer struct {
 	Email   string
 	Phone   string
 	IsAdmin bool
+	// Locale is the account's interface language (users.locale).
+	Locale string
 }
 
 type viewerKey struct{}

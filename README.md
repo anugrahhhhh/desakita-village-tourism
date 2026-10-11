@@ -96,6 +96,7 @@ PW_CHANNEL=msedge npm run e2e           # Playwright: alur utama, axe-core WCAG 
   - `GET /readyz`: readiness, melakukan ping ke database. Arahkan load balancer ke endpoint ini.
 - **Log:** satu baris JSON per request (method, path tanpa query string, status, durasi, `request_id`). Isi form, kata sandi, catatan pemesanan, dan nomor HP tidak pernah dicatat.
 - **HTTPS:** pasang reverse proxy (Caddy, nginx, atau proxy platform), lalu set `APP_ENV=production` dan `TRUST_PROXY=true`.
+- **Bahasa:** antarmuka tersedia dalam bahasa Indonesia dan Inggris. Bahasa dipilih lewat pemilih di footer, atau otomatis dari `Accept-Language`. Email dikirim dalam bahasa akun penerima (SPEC §15).
 - **Email:** notifikasi masuk antrean `email_outbox` dalam transaksi yang sama dengan perubahannya, lalu dikirim oleh worker di dalam `serve` (lihat SPEC §13). Isi `SMTP_HOST` dan `APP_BASE_URL` di production.
 - **Peta:** ubin peta diambil server dari `MAP_TILE_URL` lalu di-cache di `MAP_TILE_DIR` (lihat SPEC §14). Server ubin OpenStreetMap hanya untuk trafik ringan, jadi gunakan penyedia ubin lain untuk trafik besar.
 - **Batasan:** rate limit disimpan di memori, jadi jalankan satu instance aplikasi.

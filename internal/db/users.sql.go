@@ -37,9 +37,9 @@ func (q *Queries) CountVillagesSolelyManagedBy(ctx context.Context, userID int64
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (email, password_hash, name, phone)
-VALUES ($1, $2, $3, $4)
-RETURNING id, email, password_hash, name, phone, is_admin, created_at, updated_at
+INSERT INTO users (email, password_hash, name, phone, locale)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, email, password_hash, name, phone, is_admin, created_at, updated_at, locale
 `
 
 type CreateUserParams struct {
@@ -47,6 +47,7 @@ type CreateUserParams struct {
 	PasswordHash string
 	Name         string
 	Phone        *string
+	Locale       string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -55,6 +56,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.PasswordHash,
 		arg.Name,
 		arg.Phone,
+		arg.Locale,
 	)
 	var i User
 	err := row.Scan(
@@ -66,6 +68,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.IsAdmin,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Locale,
 	)
 	return i, err
 }
@@ -81,7 +84,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, name, phone, is_admin, created_at, updated_at FROM users WHERE email = $1
+SELECT id, email, password_hash, name, phone, is_admin, created_at, updated_at, locale FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -96,12 +99,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.IsAdmin,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Locale,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, name, phone, is_admin, created_at, updated_at FROM users WHERE id = $1
+SELECT id, email, password_hash, name, phone, is_admin, created_at, updated_at, locale FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
@@ -116,6 +120,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 		&i.IsAdmin,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Locale,
 	)
 	return i, err
 }
@@ -143,4 +148,18 @@ func (q *Queries) PromoteAdmin(ctx context.Context, email string) (int64, error)
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const setUserLocale = `-- name: SetUserLocale :exec
+UPDATE users SET locale = $2, updated_at = now() WHERE id = $1
+`
+
+type SetUserLocaleParams struct {
+	ID     int64
+	Locale string
+}
+
+func (q *Queries) SetUserLocale(ctx context.Context, arg SetUserLocaleParams) error {
+	_, err := q.db.Exec(ctx, setUserLocale, arg.ID, arg.Locale)
+	return err
 }

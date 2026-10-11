@@ -911,3 +911,102 @@ Nilai yang tidak valid diabaikan. Setiap halaman berisi 24 hasil, dan jumlah tot
 | Mode luring dan rate limit pengambilan ke hulu | `TestWithoutUpstreamServesOnlyLocalTiles`, `TestMissLimit` |
 | E2E: penanda, popup, dan tautan berfungsi; semua request ke origin sendiri; tanpa pelanggaran CSP; tanpa JS daftar tetap tampil; peta pemilih mengisi kolom | `e2e/tests/map.spec.ts` |
 | `/peta` lolos axe-core WCAG 2.1 AA di 375 px dan 1280 px | `e2e/tests/a11y.spec.ts` |
+
+## 15. Dua bahasa (tahap 7)
+
+### Bahasa yang didukung
+
+- Bahasa Indonesia (`id`, default) dan Inggris (`en`). Daftarnya ada di `i18n.Supported`.
+- Yang diterjemahkan: seluruh teks antarmuka (`web/locales/<lang>.json`), email (`web/emails/<lang>/`), nama hari dan bulan, pemisah desimal, label kontrol peta, dan pesan WhatsApp.
+- Yang **tidak** diterjemahkan: konten yang ditulis pengguna, yaitu nama dan deskripsi desa, paket, ulasan, serta alasan dari pengelola atau admin. Konten ini tampil apa adanya.
+
+### Menentukan bahasa per request
+
+Urutannya:
+
+1. cookie `lang` (pilihan eksplisit pengunjung);
+2. bahasa akun (`users.locale`) bila pengguna sudah masuk;
+3. header `Accept-Language`;
+4. bahasa Indonesia.
+
+Bahasa ditentukan di middleware `detectLang`, yang berjalan dua kali:
+- di root, supaya halaman 404 dan halaman galat CSRF ikut terlokalisasi;
+- setelah `LoadViewer`, saat akun sudah diketahui.
+
+Atribut `<html lang>` dan header `Content-Language` mengikuti bahasa yang dipilih.
+
+### Mengganti bahasa
+
+- Pemilih bahasa ada di footer: form `POST /bahasa` dengan token CSRF dan alamat kembali. Alamat kembali hanya boleh berupa path internal (`httpx.SafeRedirect`).
+- Pilihan disimpan di cookie `lang` (1 tahun, `HttpOnly`, `SameSite=Lax`, `Secure` di production).
+- Bila pengguna sedang masuk, pilihan juga disimpan di akunnya.
+- Saat mendaftar, akun mendapat bahasa yang sedang dipakai.
+- Halaman galat tidak punya token CSRF, jadi pemilih bahasa tidak ditampilkan di sana.
+
+### Email dan WhatsApp
+
+- **Email** memakai bahasa akun penerima, termasuk format tanggalnya. Contoh: wisatawan berbahasa Inggris menerima email bahasa Inggris, sementara pengelola desa yang sama menerima email bahasa Indonesia.
+- **Pesan WhatsApp** disusun dalam bahasa pengirim (pengguna yang sedang membuka halaman).
+
+### Bentuk tunggal
+
+- Bahasa Indonesia tidak membedakan bentuk tunggal dan jamak. Di bahasa Inggris, jika argumen pertama bernilai 1 dan kunci `<kunci>.one` ada, teks dari kunci itu yang dipakai ("1 review" dan "2 reviews").
+
+### Implementasi
+
+- **Template:** setiap halaman di-parse sekali per bahasa saat start, sehingga fungsi `t` terikat ke bahasanya dan render tetap cepat.
+- **Database:** migrasi `000007` menambah kolom `users.locale` (`id` atau `en`, default `id`).
+
+### Kriteria dan bukti
+
+| Kriteria | Tes |
+|---|---|
+| Semua bahasa punya kunci dan placeholder `%` yang sama dengan `id.json`; kunci `.one` hanya untuk kunci yang ada | `TestLocalesMatch` |
+| Semua bahasa punya template email yang sama dan semuanya ter-render | `TestEmailTemplatesPerLanguage`, `TestEmailTemplatesRender` |
+| Negosiasi `Accept-Language` (q-value, `in`, tag tak dikenal) dan bentuk tunggal | `TestNegotiate`, `TestPluralOne` |
+| Urutan cookie > akun > header; 404 terlokalisasi; cookie aman; alamat kembali eksternal ditolak; bahasa tak dikenal ditolak; tanpa CSRF ditolak | `TestLanguageNegotiationAndSwitch` |
+| Bahasa tersimpan saat daftar dan saat ganti bahasa; perangkat baru mengikuti akun | `TestAccountLanguage` |
+| Email mengikuti bahasa penerima | `TestEmailsFollowRecipientLanguage` |
+| Halaman utama wisatawan, pengelola, dan admin ter-render dalam bahasa Inggris tanpa kunci yang hilang | `TestPagesRenderInEnglish` |
+| E2E: pemilih bahasa di footer, kontrol peta ikut berganti, axe-core lolos dalam bahasa Inggris | `e2e/tests/lang.spec.ts` |
+
+## 16. Statistik pengelola (tahap 7)
+
+### Halaman dan akses
+
+- `/kelola/desa/{id}/statistik`, ditautkan dari ringkasan desa.
+- Hanya pengelola desa tersebut yang bisa membuka halaman ini. Pengguna lain mendapat 404, dan pengunjung yang belum masuk diarahkan ke halaman masuk.
+- Akses dicek di `booking.Service.VillageStats` lewat `VillageAccess`.
+
+### Periode
+
+- Pilihan periode: 90 hari (default), 30 hari, atau 365 hari terakhir (`?periode=`), berakhir hari ini menurut tanggal `Asia/Jakarta`. Nilai lain dikembalikan ke 90.
+- Semua angka dibaca dari satu snapshot transaksi read-only (`REPEATABLE READ`), sehingga angka-angka di halaman saling konsisten.
+
+### Isi
+
+- **Permintaan masuk:** jumlah permintaan yang dibuat dalam periode, dan jumlah yang masih menunggu.
+- **Ditanggapi tepat waktu:** permintaan yang diputuskan pengelola dibagi permintaan yang diputuskan ditambah yang kedaluwarsa. Ditampilkan bersama median waktu tanggap (dari permintaan masuk sampai keputusan).
+- **Pengunjung, kunjungan, dan perkiraan pendapatan:** hanya pemesanan berstatus **selesai** dengan tanggal berangkat dalam periode. Pendapatan memakai harga saat pemesanan, karena pembayaran diterima langsung oleh desa.
+- **Status permintaan:** diterima (termasuk yang dibatalkan setelah dikonfirmasi), ditolak, kedaluwarsa, dibatalkan, dan menunggu, beserta tingkat penerimaan.
+- **Grafik pengunjung per bulan, 12 bulan terakhir:**
+  - Grafik kolom SVG yang digambar di server: satu warna brand, sumbu dan grid samar, nilai hanya ditulis pada bulan tertinggi dan bulan terakhir, dan tooltip `<title>` di setiap kolom.
+  - Di layar sempit tampil versi 6 bulan supaya teks tetap terbaca.
+  - Tersedia **tabel** berisi seluruh nilai sebagai alternatif aksesibel.
+  - CSP tetap ketat: geometri grafik dihitung di Go, dan warnanya diatur lewat kelas CSS.
+- **Paket terpopuler:** maksimal 10 paket, diurutkan menurut jumlah pengunjung, lalu jumlah permintaan.
+
+### Implementasi
+
+- Query ada di `queries/stats.sql`.
+- Migrasi `000008` menambah indeks `bookings (village_id, created_at)` untuk menghitung permintaan per desa.
+
+### Kriteria dan bukti
+
+| Kriteria | Tes |
+|---|---|
+| Hitungan status, tingkat tanggapan dan penerimaan, median waktu tanggap, pengunjung, pendapatan, grafik 12 bulan (bulan kosong bernilai nol), paket, dan batas periode 90/365 hari | `TestVillageStats` |
+| Pengelola desa lain dan wisatawan mendapat `ErrNotFound`; desa tanpa data menghasilkan nol | `TestVillageStats` |
+| Skala sumbu, geometri kolom, label selektif, label bulan per bahasa, dan format durasi | `TestNiceMax`, `TestBuildChart`, `TestFormatDuration` |
+| Halaman, pilihan periode, bahasa Inggris, dan akses (404 untuk wisatawan, redirect untuk anonim) | `TestManagerStatsPage` |
+| axe-core WCAG 2.1 AA di 375 px dan 1280 px | `e2e/tests/a11y.spec.ts`, `e2e/tests/lang.spec.ts` |

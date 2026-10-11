@@ -12,7 +12,7 @@ import (
 
 const bookingNotificationData = `-- name: BookingNotificationData :one
 SELECT b.id, b.village_id, b.start_date, b.party_size, b.total_price_idr, b.contact_name,
-       b.decision_note, b.expires_at, coalesce(u.email, '')::text AS traveler_email,
+       b.decision_note, b.expires_at, coalesce(u.email, '')::text AS traveler_email, coalesce(u.locale, 'id')::text AS traveler_locale,
        p.name AS package_name, v.name AS village_name
 FROM bookings b
 JOIN tour_packages p ON p.id = b.package_id
@@ -22,17 +22,18 @@ WHERE b.id = $1
 `
 
 type BookingNotificationDataRow struct {
-	ID            int64
-	VillageID     int64
-	StartDate     time.Time
-	PartySize     int32
-	TotalPriceIdr int64
-	ContactName   string
-	DecisionNote  string
-	ExpiresAt     time.Time
-	TravelerEmail string
-	PackageName   string
-	VillageName   string
+	ID             int64
+	VillageID      int64
+	StartDate      time.Time
+	PartySize      int32
+	TotalPriceIdr  int64
+	ContactName    string
+	DecisionNote   string
+	ExpiresAt      time.Time
+	TravelerEmail  string
+	TravelerLocale string
+	PackageName    string
+	VillageName    string
 }
 
 func (q *Queries) BookingNotificationData(ctx context.Context, id int64) (BookingNotificationDataRow, error) {
@@ -48,6 +49,7 @@ func (q *Queries) BookingNotificationData(ctx context.Context, id int64) (Bookin
 		&i.DecisionNote,
 		&i.ExpiresAt,
 		&i.TravelerEmail,
+		&i.TravelerLocale,
 		&i.PackageName,
 		&i.VillageName,
 	)
@@ -236,13 +238,14 @@ func (q *Queries) PurgeUnsentEmailsTo(ctx context.Context, toAddress string) err
 
 const villageManagerEmails = `-- name: VillageManagerEmails :many
 
-SELECT u.email, u.name FROM village_members m JOIN users u ON u.id = m.user_id
+SELECT u.email, u.name, u.locale FROM village_members m JOIN users u ON u.id = m.user_id
 WHERE m.village_id = $1 ORDER BY u.id
 `
 
 type VillageManagerEmailsRow struct {
-	Email string
-	Name  string
+	Email  string
+	Name   string
+	Locale string
 }
 
 // Recipient lookups used by the notification adapters (inside the business transaction).
@@ -255,7 +258,7 @@ func (q *Queries) VillageManagerEmails(ctx context.Context, villageID int64) ([]
 	var items []VillageManagerEmailsRow
 	for rows.Next() {
 		var i VillageManagerEmailsRow
-		if err := rows.Scan(&i.Email, &i.Name); err != nil {
+		if err := rows.Scan(&i.Email, &i.Name, &i.Locale); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

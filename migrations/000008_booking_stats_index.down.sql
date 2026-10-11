@@ -1,0 +1,1 @@
+DROP INDEX bookings_village_created_idx;

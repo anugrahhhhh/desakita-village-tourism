@@ -1,0 +1,130 @@
+{{define "title"}}{{t "stats.title"}} · {{.Data.Village.Name}}{{end}}
+{{define "content"}}
+{{$d := .Data}}{{$s := $d.Stats}}{{$r := $s.Requests}}{{$v := $d.Village}}
+<nav class="mb-6 flex flex-wrap items-center gap-x-2 text-sm" aria-label="{{t "manage.nav.label"}}">
+  <a href="/kelola" class="btn-link">{{t "manage.nav.all_villages"}}</a><span aria-hidden="true">›</span>
+  <a href="/kelola/desa/{{$v.ID}}" class="btn-link">{{$v.Name}}</a>
+</nav>
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-bold">{{t "stats.title"}}</h1>
+    <p class="mt-1 text-stone-700">{{$d.FromText}} – {{$d.ToText}}</p>
+  </div>
+  <nav aria-label="{{t "stats.period_label"}}" class="flex flex-wrap gap-2">
+    {{range $d.Periods}}
+      <a href="?periode={{.}}" class="{{if eq . $s.Days}}btn-primary{{else}}btn-secondary{{end}} min-h-11 px-4 text-sm"{{if eq . $s.Days}} aria-current="page"{{end}}>{{t "stats.period_days" .}}</a>
+    {{end}}
+  </nav>
+</div>
+
+<ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <li class="card">
+    <p class="text-sm font-semibold text-stone-700">{{t "stats.requests"}}</p>
+    <p class="mt-1 text-3xl font-extrabold text-stone-900">{{$r.Total}}</p>
+    {{if $r.Pending}}<p class="mt-1 text-sm text-stone-700">{{t "stats.pending_now" $r.Pending}}</p>{{end}}
+  </li>
+  <li class="card">
+    <p class="text-sm font-semibold text-stone-700">{{t "stats.response_rate"}}</p>
+    {{if $r.HasDecisions}}
+      <p class="mt-1 text-3xl font-extrabold text-stone-900">{{$r.ResponseRate}}%</p>
+      <p class="mt-1 text-sm text-stone-700">{{t "stats.median_response"}}: {{or $d.Median (t "stats.none_yet")}}</p>
+    {{else}}
+      <p class="mt-1 text-3xl font-extrabold text-stone-900">–</p>
+      <p class="mt-1 text-sm text-stone-700">{{t "stats.none_yet"}}</p>
+    {{end}}
+  </li>
+  <li class="card">
+    <p class="text-sm font-semibold text-stone-700">{{t "stats.visitors"}}</p>
+    <p class="mt-1 text-3xl font-extrabold text-stone-900">{{$s.Visits.Visitors}}</p>
+    <p class="mt-1 text-sm text-stone-700">{{t "stats.visits_count" $s.Visits.Visits}}</p>
+  </li>
+  <li class="card">
+    <p class="text-sm font-semibold text-stone-700">{{t "stats.revenue"}}</p>
+    <p class="mt-1 text-3xl font-extrabold text-stone-900">{{rupiah $s.Visits.Revenue}}</p>
+    <p class="mt-1 text-sm text-stone-700">{{t "stats.revenue_hint"}}</p>
+  </li>
+</ul>
+
+<section class="card mt-6" aria-labelledby="chart-heading">
+  <h2 id="chart-heading" class="text-lg font-bold">{{t "stats.chart_title"}}</h2>
+  {{if $d.Chart.Empty}}
+    <p class="mt-3 text-stone-700">{{t "stats.chart_empty"}}</p>
+  {{else}}
+    <div class="mt-4 hidden sm:block">{{template "stats_chart" $d.Chart}}</div>
+    <div class="mt-4 sm:hidden">
+      {{template "stats_chart" $d.Compact}}
+      <p class="mt-2 text-sm text-stone-700">{{t "stats.chart_compact_note"}}</p>
+    </div>
+  {{end}}
+  <details class="mt-4">
+    <summary class="inline-flex min-h-11 cursor-pointer items-center font-semibold text-brand-800">{{t "stats.table_toggle"}}</summary>
+    <div class="mt-2 overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <caption class="sr-only">{{t "stats.chart_title"}}</caption>
+        <thead><tr class="border-b border-stone-200"><th scope="col" class="py-2 pr-4">{{t "stats.month"}}</th><th scope="col" class="py-2 pr-4 text-right">{{t "stats.visits"}}</th><th scope="col" class="py-2 pr-4 text-right">{{t "stats.visitors_col"}}</th><th scope="col" class="py-2 text-right">{{t "stats.revenue_col"}}</th></tr></thead>
+        <tbody>
+          {{range $s.Months}}
+            <tr class="border-b border-stone-100"><th scope="row" class="py-2 pr-4 font-normal">{{month .Month}}</th><td class="py-2 pr-4 text-right">{{.Visits}}</td><td class="py-2 pr-4 text-right">{{.Visitors}}</td><td class="py-2 text-right">{{rupiah .Revenue}}</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-2">
+  <section class="card" aria-labelledby="status-heading">
+    <h2 id="status-heading" class="text-lg font-bold">{{t "stats.breakdown"}}</h2>
+    {{if $r.Total}}
+      <dl class="mt-3 divide-y divide-stone-100">
+        <div class="flex justify-between py-2"><dt>{{t "stats.accepted"}}</dt><dd class="font-semibold">{{$r.Accepted}}</dd></div>
+        <div class="flex justify-between py-2"><dt>{{t "booking.status.rejected"}}</dt><dd class="font-semibold">{{$r.Rejected}}</dd></div>
+        <div class="flex justify-between py-2"><dt>{{t "booking.status.expired"}}</dt><dd class="font-semibold">{{$r.Expired}}</dd></div>
+        <div class="flex justify-between py-2"><dt>{{t "booking.status.cancelled"}}</dt><dd class="font-semibold">{{$r.Cancelled}}</dd></div>
+        <div class="flex justify-between py-2"><dt>{{t "booking.status.pending"}}</dt><dd class="font-semibold">{{$r.Pending}}</dd></div>
+        {{if $r.Responded}}<div class="flex justify-between py-2"><dt>{{t "stats.acceptance_rate"}}</dt><dd class="font-semibold">{{$r.AcceptanceRate}}%</dd></div>{{end}}
+      </dl>
+    {{else}}
+      <p class="mt-3 text-stone-700">{{t "stats.no_requests"}}</p>
+    {{end}}
+  </section>
+
+  <section class="card" aria-labelledby="packages-heading">
+    <h2 id="packages-heading" class="text-lg font-bold">{{t "stats.packages"}}</h2>
+    {{if $s.Packages}}
+      <div class="mt-3 overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead><tr class="border-b border-stone-200"><th scope="col" class="py-2 pr-4">{{t "stats.package"}}</th><th scope="col" class="py-2 pr-4 text-right">{{t "stats.requests_col"}}</th><th scope="col" class="py-2 pr-4 text-right">{{t "stats.visitors_col"}}</th><th scope="col" class="py-2 text-right">{{t "stats.revenue_col"}}</th></tr></thead>
+          <tbody>
+            {{range $s.Packages}}
+              <tr class="border-b border-stone-100"><th scope="row" class="py-2 pr-4 font-normal">{{.Name}}</th><td class="py-2 pr-4 text-right">{{.Requests}}</td><td class="py-2 pr-4 text-right">{{.Visitors}}</td><td class="py-2 text-right">{{rupiah .Revenue}}</td></tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    {{else}}
+      <p class="mt-3 text-stone-700">{{t "stats.packages_empty"}}</p>
+    {{end}}
+  </section>
+</div>
+<p class="mt-6 flex items-start gap-2 text-sm text-stone-700"><span class="icon mt-0.5 size-4">{{template "i-info"}}</span>{{t "stats.note"}}</p>
+{{end}}
+
+{{define "stats_chart"}}{{/* . is booking.statsChart; the section heading names the chart */}}
+<svg class="h-auto w-full max-w-[720px]" viewBox="0 0 {{.W}} {{.H}}" role="img" aria-labelledby="chart-heading" focusable="false">
+  {{$c := .}}
+  {{range .Ticks}}
+    <line x1="{{$c.Left}}" x2="{{$c.Right}}" y1="{{.Y}}" y2="{{.Y}}" class="stats-grid"></line>
+    <text x="{{$c.Left}}" y="{{.Y}}" dx="-8" dy="4" text-anchor="end" class="stats-axis">{{.Label}}</text>
+  {{end}}
+  {{range .Bars}}
+    <g class="stats-bar">
+      <title>{{.Title}}</title>
+      <rect x="{{.HitX}}" y="{{.HitY}}" width="{{.HitW}}" height="{{.HitH}}" class="stats-hit"></rect>
+      {{if .Path}}<path d="{{.Path}}" class="stats-mark"></path>{{end}}
+      {{if .ShowValue}}<text x="{{.LabelX}}" y="{{.ValueY}}" text-anchor="middle" class="stats-value">{{.Value}}</text>{{end}}
+      <text x="{{.LabelX}}" y="{{.BaseY}}" dy="18" text-anchor="middle" class="stats-axis">{{.Label}}</text>
+    </g>
+  {{end}}
+</svg>
+{{end}}

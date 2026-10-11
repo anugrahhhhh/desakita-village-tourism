@@ -160,6 +160,7 @@ type User struct {
 	IsAdmin      bool
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	Locale       string
 }
 
 type Village struct {

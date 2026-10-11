@@ -13,16 +13,31 @@ import (
 	"desakita/internal/platform/mail"
 	"desakita/internal/platform/render"
 	"desakita/internal/village"
+	"desakita/web"
 )
 
 // notifier turns booking and village events into queued emails. It runs inside the
 // business transaction (booking.Notifier, village.Notifier), so a rolled-back change queues
-// nothing. Each message is deduplicated per event and recipient.
+// nothing. Each message is deduplicated per event and recipient, and written in the
+// recipient's account language (SPEC §15).
 type notifier struct {
-	templates *mail.Templates
-	tr        *i18n.Translator
+	templates map[string]*mail.Templates // by language
+	tr        *i18n.Bundle
 	loc       *time.Location
 	baseURL   string
+}
+
+// loadMailTemplates loads the email templates of every supported language.
+func loadMailTemplates() (map[string]*mail.Templates, error) {
+	out := map[string]*mail.Templates{}
+	for _, lang := range i18n.Supported {
+		t, err := mail.LoadTemplates(web.FS, lang)
+		if err != nil {
+			return nil, err
+		}
+		out[lang] = t
+	}
+	return out, nil
 }
 
 var (
@@ -52,13 +67,17 @@ type villageMail struct {
 	PublicLink    string
 }
 
-type recipient struct{ email, name string }
+type recipient struct{ email, name, locale string }
 
 func (n notifier) send(ctx context.Context, tx pgx.Tx, kind, dedupe, template string, to recipient, data any) error {
 	if to.email == "" {
 		return nil // e.g. the traveler deleted their account
 	}
-	subject, body, err := n.templates.Render(template, data)
+	tm, ok := n.templates[to.locale]
+	if !ok {
+		tm = n.templates[i18n.Default]
+	}
+	subject, body, err := tm.Render(template, data)
 	if err != nil {
 		return err
 	}
@@ -74,7 +93,7 @@ func managers(ctx context.Context, q *db.Queries, villageID int64) ([]recipient,
 	}
 	out := make([]recipient, len(rows))
 	for i, r := range rows {
-		out[i] = recipient{email: r.Email, name: r.Name}
+		out[i] = recipient{email: r.Email, name: r.Name, locale: r.Locale}
 	}
 	return out, nil
 }
@@ -86,19 +105,24 @@ func (n notifier) BookingEvent(ctx context.Context, tx pgx.Tx, event string, boo
 		return fmt.Errorf("booking notification data: %w", err)
 	}
 	expires := b.ExpiresAt.In(n.loc)
+	// Dates are formatted per recipient language in localize.
 	data := bookingMail{
 		TravelerName: b.ContactName, PackageName: b.PackageName, VillageName: b.VillageName,
-		Date: render.FormatDate(n.tr, b.StartDate), PartySize: b.PartySize, Total: render.FormatRupiah(b.TotalPriceIdr),
-		Note:      b.DecisionNote,
-		RespondBy: render.FormatDate(n.tr, expires) + " " + expires.Format("15:04 MST"),
+		PartySize: b.PartySize, Total: render.FormatRupiah(b.TotalPriceIdr), Note: b.DecisionNote,
+	}
+	localize := func(d bookingMail, locale string) bookingMail {
+		tr := n.tr.For(locale)
+		d.Date = render.FormatDate(tr, b.StartDate)
+		d.RespondBy = render.FormatDate(tr, expires) + " " + expires.Format("15:04 MST")
+		return d
 	}
 	travelerLink := fmt.Sprintf("%s/pemesanan/%d", n.baseURL, b.ID)
 	managerLink := fmt.Sprintf("%s/kelola/desa/%d/pemesanan/%d", n.baseURL, b.VillageID, b.ID)
-	traveler := recipient{email: b.TravelerEmail, name: b.ContactName}
+	traveler := recipient{email: b.TravelerEmail, name: b.ContactName, locale: b.TravelerLocale}
 	kind, dedupe := "booking."+event, fmt.Sprintf("booking:%d:%s", b.ID, event)
 
 	toTraveler := func(template, link string) error {
-		d := data
+		d := localize(data, traveler.locale)
 		d.RecipientName, d.Link = b.ContactName, link
 		return n.send(ctx, tx, kind, dedupe, template, traveler, d)
 	}
@@ -108,7 +132,7 @@ func (n notifier) BookingEvent(ctx context.Context, tx pgx.Tx, event string, boo
 			return err
 		}
 		for _, m := range ms {
-			d := data
+			d := localize(data, m.locale)
 			d.RecipientName, d.Link = m.name, managerLink
 			if err := n.send(ctx, tx, kind, dedupe, template, m, d); err != nil {
 				return err
